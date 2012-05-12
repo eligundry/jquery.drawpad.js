@@ -19,6 +19,7 @@
 
   <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
 
+  <link rel="stylesheet" href="css/colorpicker.css">
   <link rel="stylesheet" href="css/style.css">
 
   <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
@@ -35,6 +36,30 @@
 
   <!-- Add your site or application content here -->
 
+  <div id="editor">
+	  <img src="http://dummyimage.com/500x500/0ff/000.png" alt="Dummy image"
+	  width=500 height=500 />
+  </div>
+
+  <form action="#" id="controls" method="post">
+	  <fieldset class="actions">
+	      <legend>Actions</legend>
+	  </fieldset>
+      <fieldset class="line">
+		  <legend>Line</legend>
+          <label for="line_width">Width</label>
+          <input type="number" name="line_width" value="4" class="line-width" />
+		  <br />
+		  <label for="line_color">Color</label>
+		  <input type="color" name="line_color" value="000" class="line-color
+		  color-picker" />
+		  <br />
+		  <label for="line_opacity">Opacity</label>
+		  <input name="line_opacity" min="0.0" max="1" value="1" step="0.05" type="range" class="line-opacity" />
+      </fieldset>
+  </form>
+
+  <div id="annotation"></div>
 
   <!-- JavaScript at the bottom for fast page loading: http://developer.yahoo.com/performance/rules.html#js_bottom -->
 
@@ -43,6 +68,10 @@
   <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.7.2.min.js"><\/script>')</script>
 
   <!-- scripts concatenated and minified via build script -->
+  <script src="raphael-sketchpad/javascripts/raphael.js"></script>
+  <script src="raphael-sketchpad/javascripts/json2.js"></script>
+  <script src="raphael-sketchpad/javascripts/raphael.sketchpad.js"></script>
+  <script src="js/colorpicker.js"></script>
   <script src="js/plugins.js"></script>
   <script src="js/main.js"></script>
   <!-- end scripts -->
