@@ -185,9 +185,6 @@
 				case "pen":
 					tool = self.draw.pen;
 					break;
-				case "line":
-					tool = self.draw.line;
-					break;
 				case "rectangle":
 					tool = self.draw.rectangle;
 					break;
@@ -290,25 +287,6 @@
 			} else {
 				return "";
 			}
-		};
-
-		// Line tool
-
-		// Line constructor
-		self.draw.line = function () {
-			return self;
-		};
-
-		self.draw.line.start = function ( e ) {
-			return self;
-		};
-
-		self.draw.line.move = function ( e ) {
-			return self;
-		};
-
-		self.draw.line.stop = function ( e ) {
-			return ( self.draw.destroy(), self );
 		};
 
 		// Rectangle Tool

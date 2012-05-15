@@ -18,8 +18,6 @@ jQuery(document).ready(function( $ ) {
 		}
 	});
 
-	$('input[type="color"]').
-
 	$('#destroy-button').on("click", function () {
 		$('#drawpad').drawPad('destroy');
 	});
