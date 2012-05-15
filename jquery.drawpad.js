@@ -174,7 +174,7 @@
 			var tool;
 
 			// Now route the coordinates to the right tool
-			switch (self.options.controls.current_tool) {
+			switch ( self.options.controls.current_tool ) {
 				case "pen":
 					tool = self.draw.pen;
 					break;
@@ -201,7 +201,6 @@
 				} else if ( e.type === self.listeners.stop ) {
 					tool.stop( e );
 				} else {
-					console.log( e );
 					self.isDrawing = false;
 				}
 			}
@@ -214,6 +213,7 @@
 			self.isDrawing = false;
 			self.preview_path = null;
 			self.current_values = null;
+			self.flipped = null;
 			self.points = [];
 
 			return self;
@@ -311,11 +311,20 @@
 
 		// Starts the rectangle shape
 		self.draw.rectangle.start = function ( e ) {
+
+			self.flipped = {
+				x: false,
+				y: false
+			};
+
 			// Create the rectangle on the paper object
 			self.preview_path = self.paper.rect();
 
 			// Record starting point
 			self.points.start = self.coors( e );
+
+			// Store starting point in a variable in case shape is flipped
+			self.points.init = self.coors( e );
 
 			// Apply stroke settings to rectangle
 			self.preview_path.attr(
@@ -334,18 +343,12 @@
 			// Get current mouse position
 			self.points.end = self.coors( e );
 
-			var width = Math.abs( self.points.end.x - self.points.start.x );
-			var height = Math.abs( self.points.end.y - self.points.start.y );
-
 			// Merge options into current values and apply them to the path
 			self.preview_path.attr(
 				$.extend(
 					self.current_values,
-					self.points,
-					{
-						width: width,
-						height: height
-					}
+					self.points.start,
+					self.draw.rectangle.dimensions()
 				)
 			);
 
@@ -361,6 +364,44 @@
 			return ( self.draw.destroy(), self );
 		};
 
+		// Flips the rectangles coordinates
+		self.draw.rectangle.dimensions = function () {
+			// Is the shape currently flipped on the X axis?
+			if ( !self.flipped.x && self.points.end.x <= self.points.init.x ) {
+				self.flipped.x = true;
+			} else if ( self.points.end.x > self.points.init.x ) {
+				self.flipped.x = false;
+			}
+
+			// Is the shape currently flipped on the Y axis?
+			if ( !self.flipped.y && self.points.end.y <= self.points.init.y ) {
+				self.flipped.y = true;
+			} else if ( self.points.end.y > self.points.init.y ) {
+				self.flipped.y = false;
+			}
+
+			// Switch points if flipped
+			if ( self.flipped.x ) {
+				self.points.start.x = self.points.end.x;
+				self.points.end.x = self.points.init.x;
+			} else {
+				self.points.start.x = self.points.init.x;
+			}
+
+			if ( self.flipped.y ) {
+				self.points.start.y = self.points.end.y;
+				self.points.end.y = self.points.init.y;
+			} else {
+				self.points.start.y = self.points.init.y;
+			}
+
+			// Return the calculated width and height
+			return {
+				height: Math.abs( self.points.end.y - self.points.start.y ),
+				width: Math.abs( self.points.end.x - self.points.start.x )
+			};
+		};
+
 		// Circle Tool
 
 		// Circle constructor
@@ -372,14 +413,18 @@
 			self.preview_path = self.paper.circle();
 
 			// XY start coordinates
-			self.points.start = self.coors( e );
+			self.points.start = self.draw.circle.coors( e );
+
+			// Store start point in variable in case flipped
+			self.points.init = self.draw.circle.coors( e );
 
 			// Merge coordinates back into values and apply them to the path
 			self.preview_path.attr(
-				$.extend( self.current_values, self.options.values, {
-					cx: self.points.start.x,
-					cy: self.points.start.y
-				})
+				$.extend(
+					self.current_values,
+					self.options.values,
+					self.points.start
+				)
 			);
 
 			return self;
@@ -388,18 +433,15 @@
 		// Updates the circle shape
 		self.draw.circle.move = function ( e ) {
 			// Get current coordinates
-			self.points.end = self.coors( e );
-
-			var v = {
-				x: Math.abs( self.points.end.x - self.points.start.x ),
-				y: Math.abs( self.points.end.y - self.points.start.y ),
-			};
+			self.points.end = self.draw.circle.coors( e );
 
 			// Apply new dimenseions to preview path
             self.preview_path.attr(
-				$.extend( self.current_values, self.options.values, {
-					r: Math.sqrt((Math.pow(v.x, 2) + Math.pow(v.y, 2)))
-				})
+				$.extend(
+					self.current_values,
+					self.options.values,
+					self.draw.circle.dimensions()
+				)
             );
 
 			return self;
@@ -412,6 +454,25 @@
 			}
 
 			return ( self.draw.destroy(), self );
+		};
+
+		// Calculates the circle's dimensions, and flips if necessarry.
+		self.draw.circle.dimensions = function () {
+			var v = {
+				cx: Math.abs( self.points.end.cx - self.points.start.cx ),
+				cy: Math.abs( self.points.end.cy - self.points.start.cy )
+			};
+
+			return {
+				r: Math.sqrt( ( Math.pow( v.cx, 2 ) + Math.pow( v.cy, 2 ) ) )
+			};
+		};
+
+		self.draw.circle.coors = function ( e ) {
+			return {
+				cx: e.pageX - self.offset.left,
+				cy: e.pageX - self.offset.top
+			};
 		};
 
 		// Returns the mouse's position relative to the container
