@@ -68,7 +68,8 @@
 			$(self.options.controls.container).off("submit");
 			$(self.options.controls.color).off("change");
 			$(self.options.controls.fill).off("change");
-			$(self.options.controls.opacity).off("change");
+			$(self.options.controls.stroke_opacity).off("change");
+			$(self.options.controls.fill_opacity).off("change");
 			$(self.options.controls.width).off("change");
 			$(self.options.controls.clear).off("click");
 			$(self.options.controls.save).off("click");
@@ -100,10 +101,16 @@
 					self.options.values.fill = $(this).val();
 				});
 
-			$(self.options.controls.opacity)
+			$(self.options.controls.stroke_opacity)
 				.val(self.rangeCheck(self.options.values["stroke-opacity"], 0, 1.0))
 				.on("change", function () {
 					self.options.values["stroke-opacity"] = self.rangeCheck($(this).val(), 0, 1.0);
+				});
+
+			$(self.options.controls.fill_opacity)
+				.val(self.rangeCheck(self.options.values["fill-opacity"], 0, 1.0))
+				.on("change", function () {
+					self.options.values["fill-opacity"] = self.rangeCheck($(this).val(), 0, 1.0);
 				});
 
 			$(self.options.controls.width)
@@ -517,7 +524,8 @@
 			circle: "#circle-tool",
 			fill: "#fill-color",
 			color: "#stroke-color",
-			opacity: "#opacity-selector",
+			stroke_opacity: "#stroke-opacity",
+			fill_opacity: "#fill-opacity",
 			radius: "#stroke-radius",
 			width: "#stroke-width",
 			undo: "#undo-button",
@@ -545,6 +553,7 @@
 			r: 0,
 			stroke: "#444",
 			fill: "none",
+			"fill-opacity": 1.0,
 			"stroke-linecap": "round",
 			"stroke-linejoin": "round",
 			"stroke-opacity": 1.0,
