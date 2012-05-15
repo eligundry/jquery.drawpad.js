@@ -226,17 +226,22 @@ td { vertical-align: top; }
 
 body {
 	margin: 0 auto;
-	width: 500px;
+	width: 100%;
 }
 
 #drawpad {
-	border: 3px solid #444;
 	min-height: 500px;
 	width: 100%;
 }
 
+#drawpad svg {
+	border: 3px solid #444;
+	overflow: scroll;
+}
+
 #controls fieldset {
 	border: 2px solid #000;
+	float: left;
 }
 
 #controls legend {

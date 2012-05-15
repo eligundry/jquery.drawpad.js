@@ -1,6 +1,6 @@
 ;(function ( $, window, document, undefined ) {
 
-	if (!$.drawPad) {
+	if ( !$.drawPad ) {
 		$.drawPad = {};
 	}
 
@@ -10,7 +10,7 @@
 		var self = this;
 
 		// Access to DOM and jQuery versions of the element
-		self.$element = $(element);
+		self.$element = $( element );
 		self.element = element;
 
 		// Reverse reference to the DOM object
@@ -30,7 +30,7 @@
 							 self.options.events.mouse;
 
 			// Create the Raphael object
-			self.paper = Raphael(
+			self.paper = new Raphael(
 				self.element,
 				self.options.width,
 				self.options.height
@@ -171,22 +171,39 @@
 				self.isDrawing = true;
 			}
 
+			var tool;
+
 			// Now route the coordinates to the right tool
 			switch (self.options.controls.current_tool) {
 				case "pen":
-					self.draw.pen( e );
+					tool = self.draw.pen;
 					break;
 				case "line":
-					self.draw.line( e );
+					tool = self.draw.line;
 					break;
 				case "rectangle":
-					self.draw.rectangle( e );
+					tool = self.draw.rectangle;
 					break;
 				case "circle":
-					self.draw.circle( e );
+					tool = self.draw.circle;
 					break;
 				default:
 					console.log("This tool isn't supported by DrawPad");
+			}
+
+			if ( tool ) {
+				if ( !self.options.right_click && e.button !== 0 ) {
+					e.preventDefault();
+				} else if ( self.isDrawing && e.type === self.listeners.move ) {
+					tool.move( e );
+				} else if ( e.type === self.listeners.start ) {
+					tool.start( e );
+				} else if ( e.type === self.listeners.stop ) {
+					tool.stop( e );
+				} else {
+					console.log( e );
+					self.isDrawing = false;
+				}
 			}
 
 			return self;
@@ -205,19 +222,7 @@
 		// Freeform pen tool
 
 		// Default pen constructor
-		self.draw.pen = function ( e ) {
-			if ( !self.options.right_click && e.button !== 0 ) {
-				e.preventDefault();
-			} else if ( self.isDrawing && e.type === self.listeners.move ) {
-				self.draw.pen.move( e );
-			} else if ( e.type === self.listeners.start ) {
-				self.draw.pen.start( e );
-			} else if ( e.type === self.listeners.stop ) {
-				self.draw.pen.stop( e );
-			}
-
-			return self;
-		};
+		self.draw.pen = function () { return self; };
 
 		// Initializes pen path
 		self.draw.pen.start = function ( e ) {
@@ -283,17 +288,7 @@
 		// Line tool
 
 		// Line constructor
-		self.draw.line = function ( e ) {
-			if ( e.button !== 0 && !self.options.right_click ) {
-				e.preventDefault();
-			} else if ( self.isDrawing && e.type === self.listeners.move ) {
-				self.draw.line.move( e );
-			} else if ( e.type === self.listeners.start ) {
-				self.draw.line.start( e );
-			} else if ( e.type === self.listeners.stop ) {
-				self.draw.line.stop( e );
-			}
-
+		self.draw.line = function () {
 			return self;
 		};
 
@@ -312,29 +307,10 @@
 		// Rectangle Tool
 
 		// Rectangle constructor
-		self.draw.rectangle = function ( e ) {
-
-			if ( e.button !== 0  && !self.options.right_click ) {
-				e.preventDefault();
-			} else if ( self.isDrawing && e.type === self.listeners.move ) {
-				self.draw.rectangle.move( e );
-			} else if ( e.type === self.listeners.start ) {
-				self.draw.rectangle.start( e );
-			} else if ( e.type === self.listeners.stop ) {
-				self.draw.rectangle.stop( e );
-			}
-
-			return self;
-		};
+		self.draw.rectangle = function () { return self; };
 
 		// Starts the rectangle shape
 		self.draw.rectangle.start = function ( e ) {
-            // Shape is not flipped at this point
-			self.flipped = {
-				x: false,
-				y: false
-			};
-
 			// Create the rectangle on the paper object
 			self.preview_path = self.paper.rect();
 
@@ -357,30 +333,20 @@
 		self.draw.rectangle.move = function ( e ) {
 			// Get current mouse position
 			self.points.end = self.coors( e );
-			self.points = self.coors.flip();
 
-			var width, height;
-
-			if ( !self.flipped.x ) {
-				width = Math.abs( self.points.end.x - self.points.start.x );
-			} else {
-				width = Math.abs( self.points.end.x - self.points.start.x );
-				console.log( "X Flipped!\nWidth: " + width );
-			}
-
-			if ( !self.flipped.y ) {
-				height = Math.abs( self.points.end.y - self.points.start.y );
-			} else {
-				height = Math.abs( self.points.end.y - self.points.start.y );
-				console.log( "Y Flipped!\nHeight: " + height );
-			}
+			var width = Math.abs( self.points.end.x - self.points.start.x );
+			var height = Math.abs( self.points.end.y - self.points.start.y );
 
 			// Merge options into current values and apply them to the path
 			self.preview_path.attr(
-				$.extend( self.current_values, self.points, {
-					width: width,
-					height: height
-				})
+				$.extend(
+					self.current_values,
+					self.points,
+					{
+						width: width,
+						height: height
+					}
+				)
 			);
 
 			return self;
@@ -398,19 +364,7 @@
 		// Circle Tool
 
 		// Circle constructor
-		self.draw.circle = function ( e ) {
-			if ( e.button !== 0 && !self.options.right_click ) {
-				e.preventDefault();
-			} else if ( self.isDrawing && e.type === self.listeners.move ) {
-				self.draw.circle.move( e );
-			} else if ( e.type === self.listeners.start ) {
-				self.draw.circle.start( e );
-			} else if ( e.type === self.listeners.stop ) {
-				self.draw.circle.stop( e );
-			}
-
-			return self;
-		};
+		self.draw.circle = function () { return self; };
 
 		// Starts the circle shape
 		self.draw.circle.start = function ( e )  {
@@ -468,33 +422,11 @@
 			};
 		};
 
-		// Flips coordinates of shape
-		self.coors.flip = function () {
-			var temp = self.points;
-
-			if (self.points.end.x < self.points.start.x) {
-				self.flipped.x = true;
-				temp.start.x = self.points.end.x;
-				temp.end.x = self.points.start.x;
-			} else {
-				self.flipped.x = false;
-			}
-
-			if (self.points.end.y < self.points.start.y) {
-				self.flipped.y = true;
-				temp.start.y = self.points.end.y;
-				temp.end.y = self.points.start.y;
-			} else {
-				self.flipped.y = false;
-			}
-
-			return temp;
-		};
-
 		// Checks to see if a number is within range, returns min/max depending
 		// on the passed value (max if above or not a number, min if under)
 		self.rangeCheck = function ( value, min, max ) {
-			return (isNaN(value) || value > max) ? max : (value < min) ? min : value;
+			return ( isNaN( value ) || value > max) ?
+					max : (value < min) ? min : value;
 		};
 
 		// Clears the drawpad's canvas

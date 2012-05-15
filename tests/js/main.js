@@ -8,10 +8,12 @@ jQuery(document).ready(function( $ ) {
 	$.ajax({
 		dataType: "json",
 		type: "GET",
-		url: "/js/shapes.json",
+		url: "json/shapes.json",
 		success: function( data, textStatus, jqXHR ) {
 			$('#drawpad').drawPad('init', {
-				layers: data
+				layers: data,
+				width: $('#drawpad').width(),
+				height: $('#drawpad').height()
 			});
 		}
 	});
