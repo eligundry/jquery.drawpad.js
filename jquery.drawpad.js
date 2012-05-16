@@ -143,7 +143,9 @@
 
 			self.$element
 				.on(listen.join(" "), function ( e ) {
-					self.draw( e );
+					if ( self.controls.current_tool !== "select" ) {
+						self.draw( e );
+					}
 				})              
 				// Prevents right click menu
 				.bind("contextmenu", function ( e ) {
@@ -178,7 +180,7 @@
 				self.isDrawing = true;
 			}
 
-			var tool;
+			var tool = null;
 
 			// Now route the coordinates to the right tool
 			switch ( self.options.controls.current_tool ) {
@@ -296,7 +298,7 @@
 
 		// Starts the rectangle shape
 		self.draw.rectangle.start = function ( e ) {
-
+			// Rectangle isn't flipped by default
 			self.flipped = {
 				x: false,
 				y: false
