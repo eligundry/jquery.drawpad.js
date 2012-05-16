@@ -16,7 +16,6 @@
 		// Reverse reference to the DOM object
 		self.$element.data( "drawPad", self );
 
-
 		// Public Methods
 
 		// Initialize the DrawPad object
@@ -143,10 +142,9 @@
 
 			self.$element
 				.on(listen.join(" "), function ( e ) {
-					if ( self.controls.current_tool !== "select" ) {
-						self.draw( e );
-					}
-				})              
+					e.preventDefault();
+					self.draw( e );
+				})
 				// Prevents right click menu
 				.bind("contextmenu", function ( e ) {
 					e.preventDefault();
@@ -456,18 +454,29 @@
 		};
 
 		self.draw.circle.coors = function ( e ) {
+			var coors = self.coors( e );
+
 			return {
-				cx: e.pageX - self.offset.left,
-				cy: e.pageX - self.offset.top
+				cx: coors.x,
+				cy: coors.y
 			};
 		};
 
 		// Returns the mouse's position relative to the container
 		self.coors = function ( e ) {
-			return {
-				x: e.pageX - self.offset.left,
-				y: e.pageY - self.offset.top 
-			};
+			if ( self.options.touch ) {
+				e = e.orginalEvent;
+
+				return {
+					x: e.touches[0].pageX - self.offset.left,
+					y: e.touches[0].pageY - self.offset.top
+				};
+			} else {
+				return {
+					x: e.pageX - self.offset.left,
+					y: e.pageY - self.offset.top
+				};
+			}
 		};
 
 		// Checks to see if a number is within range, returns min/max depending
@@ -546,9 +555,9 @@
 				stop: "mouseup"
 			},
 			touch: {
-				start: "touchstart",
-				move: "touchmove",
-				stop: "touchend"
+				start: "touchstart mousedown",
+				move: "touchmove mousemove",
+				stop: "touchend mouseup"
 			}
 		},
 		right_click: false,
