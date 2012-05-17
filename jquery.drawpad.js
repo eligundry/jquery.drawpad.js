@@ -172,7 +172,7 @@
 		// Draw constructor
 		self.draw = function ( e ) {
 			// Is user drawing?
-			if ( e.button === 0 && e.type === self.listeners.start ) {
+			if ( e.type === self.listeners.start ) {
 				self.isDrawing = true;
 			}
 
@@ -194,9 +194,7 @@
 			}
 
 			if ( tool !== null ) {
-				if ( !self.options.right_click && e.button !== 0 ) {
-					e.preventDefault();
-				} else if ( self.isDrawing && e.type === self.listeners.move ) {
+				if ( self.isDrawing && e.type === self.listeners.move ) {
 					tool.move( e );
 				} else if ( e.type === self.listeners.start ) {
 					tool.start( e );
@@ -391,20 +389,21 @@
 		// Starts the circle shape
 		self.draw.circle.start = function ( e )  {
 			// Create circle object on paper
-			self.preview_path = self.paper.circle();
+			self.preview_path = self.paper.ellipse();
 
 			// XY start coordinates
-			self.points.start = self.draw.circle.coors( e );
-
-			// Store start point in variable in case flipped
-			self.points.init = self.draw.circle.coors( e );
+			self.points.start = self.coors( e );
 
 			// Merge coordinates back into values and apply them to the path
 			self.preview_path.attr(
 				$.extend(
 					self.current_values,
 					self.options.values,
-					self.points.start
+					self.points.start,
+					{
+						rx: 0,
+						ry: 0
+					}
 				)
 			);
 
@@ -414,7 +413,7 @@
 		// Updates the circle shape
 		self.draw.circle.move = function ( e ) {
 			// Get current coordinates
-			self.points.end = self.draw.circle.coors( e );
+			self.points.end = self.coors( e );
 
 			// Apply new dimenseions to preview path
             self.preview_path.attr( self.draw.circle.dimensions() );
@@ -434,31 +433,22 @@
 		// Calculates the circle's dimensions, and flips if necessarry.
 		self.draw.circle.dimensions = function () {
 			var v = {
-				cx: Math.abs( self.points.end.cx - self.points.start.cx ),
-				cy: Math.abs( self.points.end.cy - self.points.start.cy )
+				x: Math.abs( self.points.end.x - self.points.start.x ),
+				y: Math.abs( self.points.end.y - self.points.start.y )
 			};
 
 			return {
-				r: Math.sqrt( ( Math.pow( v.cx, 2 ) + Math.pow( v.cy, 2 ) ) )
-			};
-		};
-
-		// Gets mouse coordinates when drawing a circle
-		self.draw.circle.coors = function ( e ) {
-			var coors = self.coors( e );
-
-			return {
-				cx: coors.x,
-				cy: coors.y
+				rx: Math.sqrt( Math.pow( v.x, 2 ) ),
+				ry: Math.sqrt( Math.pow( v.y, 2 ) )
 			};
 		};
 
 		// Returns the mouse's position relative to the container
 		self.coors = function ( e ) {
-			if ( self.options.touch ) {
+			if ( e.originalEvent.targetTouches.length === 1 ) {
 				return {
-					x: e.originalEvent.touches[0].x - self.offset.left,
-					y: e.originalEvent.touches[0].y - self.offset.top
+					x: e.originalEvent.targetTouches[0].pageX - self.offset.left,
+					y: e.originalEvent.targetTouches[0].pageY - self.offset.top
 				};
 			} else {
 				return {
@@ -491,7 +481,8 @@
 
 		// Save current layers
 		self.save = function () {
-			console.log(self);
+			self.options.history = self.options.layers;
+			console.log(self.options.history);
 			return self;
 		};
 
