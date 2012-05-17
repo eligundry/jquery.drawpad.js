@@ -43,7 +43,6 @@
 			// Create an array for points
 			self.points = [];
 
-
 			// Temporary path for previewing drawing
 			self.preview_path = null;
 
@@ -125,6 +124,14 @@
 					self.options.values.r = e.srcElement.valueAsNumber;
 				});
 
+			$(self.options.controls.undo).on("click", function () {
+				self.undo();
+			});
+
+			$(self.options.controls.redo).on("click", function () {
+				self.redo();
+			});
+
 			$(self.options.controls.clear).on("click", function () {
 				self.clear();
 			});
@@ -162,15 +169,6 @@
 			return self;
 		};
 
-		// Redraws the screen on change
-		self.redraw = function () {
-			return (
-				self.clear(),
-				self.paper.add( self.options.layers ),
-				self
-			);
-		};
-
 		// Draw constructor
 		self.draw = function ( e ) {
 			// Is user drawing?
@@ -195,7 +193,7 @@
 					console.log("This tool isn't supported by DrawPad");
 			}
 
-			if ( tool ) {
+			if ( tool !== null ) {
 				if ( !self.options.right_click && e.button !== 0 ) {
 					e.preventDefault();
 				} else if ( self.isDrawing && e.type === self.listeners.move ) {
@@ -203,7 +201,8 @@
 				} else if ( e.type === self.listeners.start ) {
 					tool.start( e );
 				} else if ( e.type === self.listeners.stop ) {
-					tool.stop( e );
+					tool.stop();
+					self.draw.destroy();
 				} else {
 					self.isDrawing = false;
 				}
@@ -212,13 +211,16 @@
 			return self;
 		};
 
-		// Draw deconstructor
+		// Draw destructor
 		self.draw.destroy = function () {
+			// Reset isDrawing and points
 			self.isDrawing = false;
-			self.preview_path = null;
-			self.current_values = null;
-			self.flipped = null;
 			self.points = [];
+
+			// Delete any temporary variables
+			delete self.preview_path;
+			delete self.current_values;
+			delete self.flipped;
 
 			return self;
 		};
@@ -253,18 +255,13 @@
 			self.points.push( self.coors( e ) );
 
 			// Merge path back into values and update path
-			self.preview_path.attr(
-				$.extend(
-					self.current_values,
-					{ path: self.draw.pen.to_svg() }
-				)
-			);
+			self.preview_path.attr({ path: self.draw.pen.to_svg() });
 
 			return self;
 		};
 
 		// Function that stops the pen
-		self.draw.pen.stop = function ( e ) {
+		self.draw.pen.stop = function () {
 			if ( self.preview_path !== null ) {
 				if ( self.points.length <= 1 ) {
 					self.preview_path.remove();
@@ -273,7 +270,7 @@
 				}
 			}
 
-			return ( self.draw.destroy(), self );
+			return self;
 		};
 
 		// Converts a pen path to SVG
@@ -331,7 +328,6 @@
 			// Merge options into current values and apply them to the path
 			self.preview_path.attr(
 				$.extend(
-					self.current_values,
 					self.points.start,
 					self.draw.rectangle.dimensions()
 				)
@@ -341,12 +337,12 @@
 		};
 
 		// Finishes the rectangle
-		self.draw.rectangle.stop = function ( e ) {
+		self.draw.rectangle.stop = function () {
 			if ( self.preview_path !== null ) {
 				self.options.layers.push( self.preview_path.attrs );
 			}
 
-			return ( self.draw.destroy(), self );
+			return self;
 		};
 
 		// Flips the rectangles coordinates
@@ -421,24 +417,18 @@
 			self.points.end = self.draw.circle.coors( e );
 
 			// Apply new dimenseions to preview path
-            self.preview_path.attr(
-				$.extend(
-					self.current_values,
-					self.options.values,
-					self.draw.circle.dimensions()
-				)
-            );
+            self.preview_path.attr( self.draw.circle.dimensions() );
 
 			return self;
 		};
 
 		// Completes the circle shape
-		self.draw.circle.stop = function ( e ) {
+		self.draw.circle.stop = function () {
 			if ( self.preview_path !== null ) {
 				self.options.layers.push( self.preview_path.attrs );
 			}
 
-			return ( self.draw.destroy(), self );
+			return self;
 		};
 
 		// Calculates the circle's dimensions, and flips if necessarry.
@@ -453,6 +443,7 @@
 			};
 		};
 
+		// Gets mouse coordinates when drawing a circle
 		self.draw.circle.coors = function ( e ) {
 			var coors = self.coors( e );
 
@@ -465,11 +456,9 @@
 		// Returns the mouse's position relative to the container
 		self.coors = function ( e ) {
 			if ( self.options.touch ) {
-				e = e.orginalEvent;
-
 				return {
-					x: e.touches[0].pageX - self.offset.left,
-					y: e.touches[0].pageY - self.offset.top
+					x: e.originalEvent.touches[0].x - self.offset.left,
+					y: e.originalEvent.touches[0].y - self.offset.top
 				};
 			} else {
 				return {
@@ -479,11 +468,20 @@
 			}
 		};
 
+		// Redraws the screen on change
+		self.redraw = function () {
+			return (
+				self.clear(),
+				self.paper.add( self.options.layers ),
+				self
+			);
+		};
+
 		// Checks to see if a number is within range, returns min/max depending
 		// on the passed value (max if above or not a number, min if under)
 		self.rangeCheck = function ( value, min, max ) {
-			return ( isNaN( value ) || value > max) ?
-					max : (value < min) ? min : value;
+			return ( isNaN( value ) || value > max ) ?
+					max : ( value < min ) ? min : value;
 		};
 
 		// Clears the drawpad's canvas
@@ -493,13 +491,35 @@
 
 		// Save current layers
 		self.save = function () {
+			console.log(self);
 			return self;
 		};
 
-		// Intialize DrawPad if passed init
-		if (params == "init") {
+		// Undoes the last action
+		self.undo = function () {
+			if ( self.options.layers.length > 0 ) {
+				self.options.history.push( self.options.layers.pop() );
+				self.redraw();
+			}
+
+			return self;
+		};
+
+		self.redo = function () {
+			if ( self.options.history.length > 0 ) {
+				self.options.layers.push( self.options.history.pop() );
+				self.redraw();
+			}
+
+			return self;
+		};
+
+		// Initialize DrawPad if passed init
+		if ( params === "init" ) {
 			self.init();
 		}
+
+		return self;
 	};
 
 	// Default settings for DrawPad
@@ -555,13 +575,14 @@
 				stop: "mouseup"
 			},
 			touch: {
-				start: "touchstart mousedown",
-				move: "touchmove mousemove",
-				stop: "touchend mouseup"
+				start: "touchstart",
+				move: "touchmove",
+				stop: "touchend"
 			}
 		},
 		right_click: false,
-		layers: null,
+		layers: [],
+		history: [],
 		paper: "#drawpad",
 		touch: Modernizr.touch,
 		width: 500,
@@ -570,7 +591,7 @@
 
 	$.fn.drawPad = function ( params, options ) {
 		return this.each(function () {
-			(new $.drawPad(this, params, options));
+			( new $.drawPad( this, params, options ) );
 		});
 	};
 
