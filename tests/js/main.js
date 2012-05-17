@@ -13,8 +13,7 @@ jQuery(document).ready(function( $ ) {
 			$('#drawpad').drawPad('init', {
 				layers: data,
 				width: $('#drawpad').width(),
-				height: $('#drawpad').height(),
-				touch: true
+				height: $('#drawpad').height()
 			});
 		}
 	});

@@ -445,7 +445,7 @@
 
 		// Returns the mouse's position relative to the container
 		self.coors = function ( e ) {
-			if ( e.originalEvent.targetTouches.length === 1 ) {
+			if ( self.options.touch && e.originalEvent.targetTouches.length === 1 ) {
 				return {
 					x: e.originalEvent.targetTouches[0].pageX - self.offset.left,
 					y: e.originalEvent.targetTouches[0].pageY - self.offset.top
