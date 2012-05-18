@@ -45,6 +45,7 @@
 			<input type="radio" name="tool" value="circle" id="circle-tool" />
 			<label for="circle-tool">Circle</label>
 	    </fieldset>
+
 		<fieldset class="options">
 		    <legend>Options</legend>
 			<label for="stroke-width">Width</label>
@@ -60,6 +61,7 @@
 			<label for="stroke-radius">Radius</label>
 			<input type="number" name="stroke_radius" id="stroke-radius" />
 		</fieldset>
+
 		<fieldset class="actions">
 		    <legend>Actions</legend>
 		    <input name="undo_button" type="button" id="undo-button" value="Undo" class="button" />
@@ -68,9 +70,10 @@
 		    <input name="clear_button" type="button" id="clear-button" value="Clear" class="button" />
 		    <input name="redraw_button" type="button" id="redraw-button" value="Redraw" class="button" />
 		</fieldset>
-		<fieldset class="debug">
-		    <legend>Debug</legend>
-		    <textarea id="debug-field"></textarea>
+
+		<fieldset class="layers">
+		    <legend>Layers</legend>
+			<ol id="layer-list"></ol>
 		</fieldset>
 	</form>
 

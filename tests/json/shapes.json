@@ -5,14 +5,20 @@
 		"cy": 250,
 		"r": 90,
 		"stroke-width": 4,
-		"color": "#444"
+		"color": "#444",
+		"title": "Clear Circle",
+		"data-description": "Pay no mind to this clear circle",
+		"id": "circle1"
 	},
 	{
 		"type": "rect",
 		"x": 100,
 		"y": 100,
 		"width": 100,
-		"height": 300,
-		"fill": "#fc0"
+		"height": 100,
+		"fill": "#fc0",
+		"title": "Yellow Square",
+		"data-description": "This is just a yellow square.",
+		"id": "rect1"
 	}
 ]
