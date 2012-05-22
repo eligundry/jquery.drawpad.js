@@ -39,6 +39,34 @@
 				$this.paper.add( $this.layers );
 			}
 
+			// Event listeners for canvas
+			$this
+				// Prevent right click
+				.bind("contextmenu", function ( event ) {
+					event.preventDefault();
+				})
+				// Prevent default actions for all events on the canvas
+				.on("mousedown touchstart mousemove touchmove mouseup touchend", function ( event ) {
+						event.preventDefault();
+				})
+				.on("mousedown touchstart", function ( event ) {
+					if ( typeof( $this.current_tool.start ) !== "undefined" ) {
+						$this.isDrawing = true;
+						$this.current_tool.start( event );
+					}
+				})
+				.on("mousemove touchmove", function ( event ) {
+					if ( typeof( $this.current_tool.move ) !== "undefined" ) {
+						$this.current_tool.move( event );
+					}
+				})
+				.on("mouseup touchend", function () {
+					if ( typeof( $this.current_tool.stop ) !== "undefined" ) {
+						$this.current_tool.stop();
+						$this.methods.draw.destroy();
+					}
+				});
+
 			// Attach event listeners to toolbar
 			$this.methods.controls();
 
@@ -132,36 +160,6 @@
 			$( $this.options.controls.redraw )
 				.on("click", function () {
 					$this.methods.redraw();
-				});
-
-			// Event listeners for canvas
-			$this
-				// Prevent right click
-				.bind("contextmenu", function ( event ) {
-					event.preventDefault();
-				})
-				// Prevent default actions for all events on the canvas
-				.on("mousedown touchstart mousemove touchmove mouseup touchend",
-					function ( event ) {
-						event.preventDefault();
-					}
-				)
-				.on("mousedown touchstart", function ( event ) {
-					if ( typeof( $this.current_tool.start ) !== "undefined" ) {
-						$this.isDrawing = true;
-						$this.current_tool.start( event );
-					}
-				})
-				.on("mousemove touchmove", function ( event ) {
-					if ( typeof( $this.current_tool.move ) !== "undefined" ) {
-						$this.current_tool.move( event );
-					}
-				})
-				.on("mouseup touchend", function () {
-					if ( typeof( $this.current_tool.stop ) !== "undefined" ) {
-						$this.current_tool.stop();
-						$this.methods.draw.destroy();
-					}
 				});
 
 			return $this;
