@@ -7,7 +7,6 @@
 		"stroke-width": 4,
 		"color": "#444",
 		"title": "Clear Circle",
-		"data-description": "Pay no mind to this clear circle",
 		"id": "circle1"
 	},
 	{
@@ -18,7 +17,6 @@
 		"height": 100,
 		"fill": "#fc0",
 		"title": "Yellow Square",
-		"data-description": "This is just a yellow square.",
 		"id": "rect1"
 	}
 ]

@@ -1,3 +1,11 @@
+/*
+ * Name: jquery.drawpad
+ * Author: Eli Gundry
+ * Description: Extensible plugin for jQuery and Raphael.js that allows for vector drawing
+ * Dependencies: jQuery, Raphael.js, Modernizr
+ * License: GPL V2
+ */
+
 ;(function ( $, window, document, undefined ) {
 	// Public Methods
 	// Can be overridden by defining your own methods in options
@@ -23,15 +31,16 @@
 			// Temporary path for previewing drawing
 			$this.preview_path = null;
 
-			// Layers object to store paths
+			// Layers object to store paths and history
 			$this.layers = this.options.layers;
 			$this.history = this.options.histroy;
 
-			// Bool to keep track of whether or not we are drawing
+			// Bool to keep track of whether or not we are drawing or selected
 			$this.isDrawing = false;
+			$this.isSelected = false;
 
 			// Set the default tool from options
-			$this.current_tool = $this.methods.draw[ $this.options.default_tool ];
+			$this.current_tool = $this.methods.draw[$this.options.default_tool];
 
 			// Redraw layers from history
 			if ( $this.options.layers !== null ) {
@@ -41,17 +50,21 @@
 
 			// Event listeners for canvas
 			$this
-				// Prevent right click
+				// Right click handler
 				.bind("contextmenu", function ( event ) {
+					if ( typeof( $this.options.right_click ) === "function" ) {
+						$this.options.right_click( event );
+					}
+
+					// Prevent context menu
 					event.preventDefault();
 				})
 				// Prevent default actions for all events on the canvas
 				.on("mousedown touchstart mousemove touchmove mouseup touchend", function ( event ) {
-						event.preventDefault();
+					event.preventDefault();
 				})
 				.on("mousedown touchstart", function ( event ) {
 					if ( typeof( $this.current_tool.start ) !== "undefined" ) {
-						$this.isDrawing = true;
 						$this.current_tool.start( event );
 					}
 				})
@@ -63,7 +76,6 @@
 				.on("mouseup touchend", function () {
 					if ( typeof( $this.current_tool.stop ) !== "undefined" ) {
 						$this.current_tool.stop();
-						$this.methods.draw.destroy();
 					}
 				});
 
@@ -71,11 +83,6 @@
 			$this.methods.controls();
 
 			return $this;
-		},
-
-		// Destructor for DrawPad
-		destroy: function () {
-			console.log("destroy");
 		},
 
 		// Attaches event listeners to DrawPad
@@ -133,34 +140,19 @@
 				});
 
 			// Undo button event listeners
-			$( $this.options.controls.undo )
-				.on("click", function () {
-					$this.methods.undo();
-				});
+			$( $this.options.controls.undo ).on( "click", $this.methods.undo );
 
 			// Redo button event listeners
-			$( $this.options.controls.redo )
-				.on("click", function () {
-					$this.methods.redo();
-				});
+			$( $this.options.controls.redo ).on( "click", $this.methods.redo );
 
 			// Clear button event listeners
-			$( $this.options.controls.clear )
-				.on("click", function () {
-					$this.methods.clear();
-				});
+			$( $this.options.controls.clear ).on( "click", $this.methods.clear );
 
 			// Save button event listeners
-			$( $this.options.controls.save )
-				.on("click", function () {
-					$this.methods.save();
-				});
+			$( $this.options.controls.save ).on( "click", $this.methods.save );
 
 			// Redraw button event listeners
-			$( $this.options.controls.redraw )
-				.on("click", function () {
-					$this.methods.redraw();
-				});
+			$( $this.options.controls.redraw ).on( "click", $this.methods.redraw );
 
 			return $this;
 		},
@@ -184,6 +176,9 @@
 			pen: {
 				// Initializes pen path
 				start: function ( e ) {
+					// We are drawing now
+					$this.isDrawing = true;
+
 					// Create path on paper
 					$this.preview_path = $this.paper.path();
 
@@ -203,7 +198,7 @@
 
 				// Redraws pen path as it moves
 				move: function ( e ) {
-					// If not drawing, do nothing
+					// If not drawing, do nothing and get out of here
 					if ( !$this.isDrawing ) return;
 
 					// Push points into array
@@ -227,7 +222,7 @@
 						}
 					}
 
-					return $this;
+					return ( $this.methods.draw.destroy(), $this );
 				},
 
 				// Converts pen path to SVG
@@ -250,6 +245,9 @@
 			rectangle: {
 				// Starts the rectangle shape
 				start: function ( e ) {
+					// We are drawing now
+					$this.isDrawing = true;
+
 					// Rectangle isn't flipped by default
 					$this.flipped = {
 						x: false,
@@ -302,7 +300,7 @@
 						$this.layers.push( $this.preview_path.attrs );
 					}
 
-					return $this;
+					return ( $this.methods.draw.destroy(), $this );
 				},
 
 				// Calculates the width & height of the rectangle
@@ -349,6 +347,9 @@
 			circle: {
 				// Starts the circle shape
 				start: function ( e ) {
+					// We are drawing now
+					$this.isDrawing = true;
+
 					// Create circle object on paper
 					$this.preview_path = $this.paper.circle();
 
@@ -389,7 +390,7 @@
 						$this.layers.push( $this.preview_path.attrs );
 					}
 
-					return $this;
+					return ( $this.methods.draw.destroy(), $this );
 				},
 
 				// Calculates the circle's dimensions, and flips if necessary.
@@ -431,7 +432,7 @@
 
 		// Redraws the screen on change
 		redraw: function () {
-			$this.methods.clear();
+			$this.paper.clear();
 			$this.paper.add( $this.layers );
 			return $this;
 		},
@@ -439,12 +440,8 @@
 		// Save current layers
 		save: function () {
 			console.log( $this.layers );
+			console.log( $this.history );
 			return $this;
-		},
-
-		// Clears the drawpad's canvas
-		clear: function () {
-			return ( $this.paper.clear, $this );
 		},
 
 		// Undoes the last action
@@ -512,7 +509,6 @@
 		right_click: false,
 		layers: [],
 		history: [],
-		paper: "#drawpad",
 		touch: Modernizr.touch,
 		width: 500,
 		height: 500,
@@ -523,6 +519,8 @@
 	$.fn.drawPad = function ( method ) {
 		// Prevent scope issues by using something other than this.
 		$this = this;
+
+		// Need this variable to initialize the Raphael object
 		$this.element = document.getElementById( $this.attr( "id" ) );
 
 		// Reverse reference to the DOM object
