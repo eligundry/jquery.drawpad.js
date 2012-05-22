@@ -11,6 +11,7 @@
 				this.options.height
 			);
 
+			// Cache the canvas object
 			$this.canvas = this.paper.canvas;
 
 			// Calculate offset of the canvas
@@ -53,8 +54,8 @@
 		controls: function () {
 			// Don't refresh the page if form is submitted
 			$( $this.options.controls.container )
-				.on("submit", function ( e ) {
-					e.preventDefault();
+				.on("submit", function ( event ) {
+					event.preventDefault();
 				})
 				// Changes current tool
 				.on("change", "input[name='tool']", function () {
@@ -135,25 +136,29 @@
 
 			// Event listeners for canvas
 			$this
+				// Prevent right click
+				.bind("contextmenu", function ( event ) {
+					event.preventDefault();
+				})
 				// Prevent default actions for all events on the canvas
 				.on("mousedown touchstart mousemove touchmove mouseup touchend",
-					function ( e ) {
-						e.preventDefault();
+					function ( event ) {
+						event.preventDefault();
 					}
 				)
 				.on("mousedown touchstart", function ( event ) {
-					if ( $this.current_tool.start ) {
+					if ( typeof( $this.current_tool.start ) !== "undefined" ) {
 						$this.isDrawing = true;
 						$this.current_tool.start( event );
 					}
 				})
 				.on("mousemove touchmove", function ( event ) {
-					if ( $this.current_tool.move && $this.isDrawing ) {
+					if ( typeof( $this.current_tool.move ) !== "undefined" ) {
 						$this.current_tool.move( event );
 					}
 				})
 				.on("mouseup touchend", function () {
-					if ( $this.current_tool.stop ) {
+					if ( typeof( $this.current_tool.stop ) !== "undefined" ) {
 						$this.current_tool.stop();
 						$this.methods.draw.destroy();
 					}
@@ -200,6 +205,9 @@
 
 				// Redraws pen path as it moves
 				move: function ( e ) {
+					// If not drawing, do nothing
+					if ( !$this.isDrawing ) return;
+
 					// Push points into array
 					$this.points.push( $this.methods.coors( e ) );
 
@@ -273,6 +281,9 @@
 
 				// Redraws the rectangle
 				move: function ( e ) {
+					// If not drawing, do nothing and get out of here
+					if ( !$this.isDrawing ) return;
+
 					// Get the current mouse position
 					$this.points.end = $this.methods.coors( e );
 
@@ -360,6 +371,9 @@
 
 				// Updates circle as it is drawn
 				move: function ( e ) {
+					// If not drawing, get out of here and do nothing
+					if ( !$this.isDrawing ) return;
+
 					// Get current coordinates
 					$this.points.end = $this.methods.coors( e );
 
@@ -380,7 +394,7 @@
 					return $this;
 				},
 
-				// Calculates the circle's dimensions, and flips if necessarry.
+				// Calculates the circle's dimensions, and flips if necessary.
 				dimensions: function () {
 					var v = {
 						x: Math.abs( $this.points.end.x - $this.points.start.x ),
@@ -390,6 +404,13 @@
 					return {
 						r: Math.sqrt( Math.pow( v.x, 2 ) - Math.pow( v.y, 2 ) )
 					};
+				}
+			},
+
+			// Select Tool
+			select: {
+				start: function ( e ) {
+					return $this;
 				}
 			}
 		},
