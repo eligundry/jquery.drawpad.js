@@ -86,7 +86,9 @@
 				});
 
 			// Attach event listeners to toolbar
-			$this.methods.controls();
+			if ( $this.methods.controls !== false ) {
+				$this.methods.controls();
+			}
 
 			return $this;
 		},
@@ -101,64 +103,68 @@
 				// Changes current tool
 				.on("change", "input[name='tool']", function() {
 					$this.current_tool = $this.methods.draw[ $(this).val() ];
-				});
-
-			// Listeners for stroke color picker
-			$( $this.options.controls.color )
-				.val( $this.options.values.stroke )
-				.on("change", function() {
-					$this.options.values.stroke = $(this).val();
-				});
-
-			// Listeners for stroke opacity
-			$( $this.options.controls.stroke_opacity )
-				.val( $this.options.values["stroke-opacity"] )
-				.on("change", function() {
-					$this.options.values["stroke-opacity"] = $(this).val();
-				});
-
-			// Listeners for fill color picker
-			$( $this.options.controls.fill )
-				.val( $this.options.values.fill )
-				.on("change", function() {
-					$this.options.values.fill = $(this).val();
-				});
-
-			// Listeners for fill color opacity
-			$( $this.options.controls.fill_opacity )
-				.val( $this.options.values["fill-opacity"] )
-				.on("change", function() {
-					$this.options.values["fill-opacity"] = $(this).val();
-				});
-
-			// Listeners for stroke width
-			$( $this.options.controls.width )
-				.val( $this.options.values["stroke-width"] )
-				.on("change", function( e ) {
-					$this.options.values["stroke-width"] = e.srcElement.valueAsNumber;
-				});
-
-			// Listeners for border radius
-			$( $this.options.controls.radius )
-				.val( $this.options.values.r )
-				.on("change", function( e ) {
-					$this.options.values.r = e.srcElement.valueAsNumber;
-				});
-
-			// Undo button event listeners
-			$( $this.options.controls.undo ).on( "click", $this.methods.undo );
-
-			// Redo button event listeners
-			$( $this.options.controls.redo ).on( "click", $this.methods.redo );
-
-			// Clear button event listeners
-			$( $this.options.controls.clear ).on( "click", $this.methods.clear );
-
-			// Save button event listeners
-			$( $this.options.controls.save ).on( "click", $this.methods.save );
-
-			// Redraw button event listeners
-			$( $this.options.controls.redraw ).on( "click", $this.methods.redraw );
+				})
+				// Listeners for stroke color picker
+				.find( $this.options.controls.color )
+					.val( $this.options.values.stroke )
+					.on("change", function() {
+						$this.options.values.stroke = $(this).val();
+					})
+					.end()
+				// Listeners for stroke opacity
+				.find( $this.options.controls.stroke_opacity )
+					.val( $this.options.values["stroke-opacity"] )
+					.on("change", function() {
+						$this.options.values["stroke-opacity"] = $(this).val();
+					})
+					.end()
+				// Listeners for fill color picker
+				.find( $this.options.controls.fill )
+					.val( $this.options.values.fill )
+					.on("change", function() {
+						$this.options.values.fill = $(this).val();
+					})
+					.end()
+				// Listeners for fill color opacity
+				.find( $this.options.controls.fill_opacity )
+					.val( $this.options.values["fill-opacity"] )
+					.on("change", function() {
+						$this.options.values["fill-opacity"] = $(this).val();
+					})
+					.end()
+				// Listeners for stroke width
+				.find( $this.options.controls.width )
+					.val( $this.options.values["stroke-width"] )
+					.on("change", function( e ) {
+						$this.options.values["stroke-width"] = e.srcElement.valueAsNumber;
+					})
+					.end()
+				// Listeners for border radius
+				.find( $this.options.controls.radius )
+					.val( $this.options.values.r )
+					.on("change", function( e ) {
+						$this.options.values.r = e.srcElement.valueAsNumber;
+					})
+					.end()
+				// Undo button event listeners
+				.find( $this.options.controls.undo )
+					.on( "click", $this.methods.undo )
+					.end()
+				// Redo button event listeners
+				.find( $this.options.controls.redo )
+					.on( "click", $this.methods.redo )
+					.end()
+				// Clear button event listeners
+				.find( $this.options.controls.clear )
+					.on( "click", $this.methods.clear )
+					.end()
+				// Save button event listeners
+				.find( $this.options.controls.save )
+					.on( "click", $this.methods.save )
+					.end()
+				// Redraw button event listeners
+				.find( $this.options.controls.redraw )
+					.on( "click", $this.methods.redraw );
 
 			return $this;
 		},
@@ -417,21 +423,22 @@
 			line: {
 				// Starts the line path with many of the same functions as pen
 				start: function( event ) {
-					// Check to see if the line has started
-					if ( $this.isDrawing ) {
-						// Get current point
-						$this.points.push( $this.methods.coors( event ) );
-
-						// Apply new points to the path
-						$this.preview_path.attr({
-							path: $this.methods.draw.pen.to_svg()
-						});
-					} else {
-						// Initialize the line the same way we would with the pen
-						$this.methods.draw.pen.start( event );
+					 // If the line hasn't started, initialize the line the same
+					 // way we would with the pen
+					if ( !$this.isDrawing ) {
+						return $this.methods.draw.pen.start( event );
 					}
 
+					// In this case, the line has started, so get current point
+					$this.points.push( $this.methods.coors( event ) );
+
+					// Apply new points to the path
+					$this.preview_path.attr({
+						path: $this.methods.draw.pen.to_svg()
+					});
+
 					return $this;
+
 				},
 
 				// Stops the current line shape when the mouse leaves the canvas
@@ -503,24 +510,23 @@
 	var defaultOptions = {
 		controls: {
 			container: $('#controls'),
-			// container: "#controls",
-			pen: "#pen-tool",
-			line: "#line-tool",
-			rectangle: "#rectangle-tool",
-			circle: "#circle-tool",
-			fill: "#fill-color",
-			color: "#stroke-color",
-			stroke_opacity: "#stroke-opacity",
-			fill_opacity: "#fill-opacity",
-			radius: "#stroke-radius",
-			width: "#stroke-width",
-			undo: "#undo-button",
-			redo: "#redo-button",
-			save: "#save-button",
-			clear: "#clear-button",
-			annotate: "#annotate-tool",
-			redraw: "#redraw-button",
-			layers: "#layer-list"
+			pen: ".pen-tool",
+			line: ".line-tool",
+			rectangle: ".rectangle-tool",
+			circle: ".circle-tool",
+			fill: ".fill-color",
+			color: ".stroke-color",
+			stroke_opacity: ".stroke-opacity",
+			fill_opacity: ".fill-opacity",
+			radius: ".stroke-radius",
+			width: ".stroke-width",
+			undo: ".undo-button",
+			redo: ".redo-button",
+			save: ".save-button",
+			clear: ".clear-button",
+			annotate: ".annotate-tool",
+			redraw: ".redraw-button",
+			layers: ".layer-list"
 		},
 		background: {
 			subject: "#edit-image",
