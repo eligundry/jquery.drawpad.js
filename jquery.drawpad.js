@@ -6,12 +6,12 @@
  * License: GPL V2
  */
 
-;(function ( $, window, document, undefined ) {
+;(function( $, window, document, undefined ) {
 	// Public Methods
 	// Can be overridden by defining your own methods in options
 	var defaultMethods = {
 		// Initialize the DrawPad object
-		init: function ( options ) {
+		init: function( options ) {
 			// Create the Raphael object
 			$this.paper = new Raphael(
 				this.element,
@@ -51,7 +51,7 @@
 			// Event listeners for canvas
 			$this
 				// Right click handler
-				.bind("contextmenu", function ( event ) {
+				.bind("contextmenu", function( event ) {
 					if ( typeof( $this.options.right_click ) === "function" ) {
 						$this.options.right_click( event );
 					}
@@ -60,22 +60,28 @@
 					event.preventDefault();
 				})
 				// Prevent default actions for all events on the canvas
-				.on("mousedown touchstart mousemove touchmove mouseup touchend", function ( event ) {
+				.on("mousedown touchstart mousemove touchmove mouseup touchend", function( event ) {
 					event.preventDefault();
 				})
-				.on("mousedown touchstart", function ( event ) {
+				.on("mousedown touchstart", function( event ) {
 					if ( typeof( $this.current_tool.start ) !== "undefined" ) {
 						$this.current_tool.start( event );
 					}
 				})
-				.on("mousemove touchmove", function ( event ) {
+				.on("mousemove touchmove", function( event ) {
 					if ( typeof( $this.current_tool.move ) !== "undefined" ) {
 						$this.current_tool.move( event );
 					}
 				})
-				.on("mouseup touchend", function () {
+				.on("mouseup touchend", function() {
 					if ( typeof( $this.current_tool.stop ) !== "undefined" ) {
 						$this.current_tool.stop();
+					}
+				})
+				// If the mouse leaves the canvas, end the shape
+				.on("mouseleave", function() {
+					if ( typeof( $this.current_tool.leave ) !== "undefined" ) {
+						$this.current_tool.leave();
 					}
 				});
 
@@ -86,56 +92,56 @@
 		},
 
 		// Attaches event listeners to DrawPad
-		controls: function () {
+		controls: function() {
 			// Don't refresh the page if form is submitted
-			$( $this.options.controls.container )
-				.on("submit", function ( event ) {
+			$this.options.controls.container
+				.on("submit", function( event ) {
 					event.preventDefault();
 				})
 				// Changes current tool
-				.on("change", "input[name='tool']", function () {
+				.on("change", "input[name='tool']", function() {
 					$this.current_tool = $this.methods.draw[ $(this).val() ];
 				});
 
 			// Listeners for stroke color picker
 			$( $this.options.controls.color )
 				.val( $this.options.values.stroke )
-				.on("change", function () {
+				.on("change", function() {
 					$this.options.values.stroke = $(this).val();
 				});
 
 			// Listeners for stroke opacity
 			$( $this.options.controls.stroke_opacity )
 				.val( $this.options.values["stroke-opacity"] )
-				.on("change", function () {
+				.on("change", function() {
 					$this.options.values["stroke-opacity"] = $(this).val();
 				});
 
 			// Listeners for fill color picker
 			$( $this.options.controls.fill )
 				.val( $this.options.values.fill )
-				.on("change", function () {
+				.on("change", function() {
 					$this.options.values.fill = $(this).val();
 				});
 
 			// Listeners for fill color opacity
 			$( $this.options.controls.fill_opacity )
 				.val( $this.options.values["fill-opacity"] )
-				.on("change", function () {
+				.on("change", function() {
 					$this.options.values["fill-opacity"] = $(this).val();
 				});
 
 			// Listeners for stroke width
 			$( $this.options.controls.width )
 				.val( $this.options.values["stroke-width"] )
-				.on("change", function ( e ) {
+				.on("change", function( e ) {
 					$this.options.values["stroke-width"] = e.srcElement.valueAsNumber;
 				});
 
 			// Listeners for border radius
 			$( $this.options.controls.radius )
 				.val( $this.options.values.r )
-				.on("change", function ( e ) {
+				.on("change", function( e ) {
 					$this.options.values.r = e.srcElement.valueAsNumber;
 				});
 
@@ -159,9 +165,10 @@
 
 		draw: {
 			// Draw destructor
-			destroy: function () {
-				// Reset isDrawing and points
+			destroy: function() {
+				// Reset state variables
 				$this.isDrawing = false;
+				$this.isSelected = false;
 				$this.points = [];
 
 				// Delete any temporary variables
@@ -175,7 +182,7 @@
 			// Pen Tool
 			pen: {
 				// Initializes pen path
-				start: function ( e ) {
+				start: function( event ) {
 					// We are drawing now
 					$this.isDrawing = true;
 
@@ -183,7 +190,7 @@
 					$this.preview_path = $this.paper.path();
 
 					// Start path on clicked coordinate
-					$this.points.push( $this.methods.coors( e ) );
+					$this.points.push( $this.methods.coors( event ) );
 
 					// Apply attributes to path
 					$this.preview_path.attr(
@@ -197,12 +204,12 @@
 				},
 
 				// Redraws pen path as it moves
-				move: function ( e ) {
+				move: function( event ) {
 					// If not drawing, do nothing and get out of here
 					if ( !$this.isDrawing ) return;
 
 					// Push points into array
-					$this.points.push( $this.methods.coors( e ) );
+					$this.points.push( $this.methods.coors( event ) );
 
 					// Update path with new points
 					$this.preview_path.attr({
@@ -213,7 +220,7 @@
 				},
 
 				// Stops the pen
-				stop: function () {
+				stop: function() {
 					if ( $this.preview_path !== null ) {
 						if ( $this.points.length <= 1 ) {
 							$this.preview_path.remove();
@@ -226,7 +233,7 @@
 				},
 
 				// Converts pen path to SVG
-				to_svg: function () {
+				to_svg: function() {
 					if ( $this.points !== null && $this.points.length > 1 ) {
 						var path = "M" + $this.points[0].x + "," + $this.points[0].y;
 
@@ -244,7 +251,7 @@
 			// Rectangle tool
 			rectangle: {
 				// Starts the rectangle shape
-				start: function ( e ) {
+				start: function( event ) {
 					// We are drawing now
 					$this.isDrawing = true;
 
@@ -258,10 +265,10 @@
 					$this.preview_path = $this.paper.rect();
 
 					// Record the starting point
-					$this.points.start = $this.methods.coors( e );
+					$this.points.start = $this.methods.coors( event );
 
 					// Store starting point in a variable in case shape is flipped
-					$this.points.init = $this.methods.coors( e );
+					$this.points.init = $this.methods.coors( event );
 
 					// Apply stroke settings to rectangle
 					$this.preview_path.attr(
@@ -276,12 +283,12 @@
 				},
 
 				// Redraws the rectangle
-				move: function ( e ) {
+				move: function( event ) {
 					// If not drawing, do nothing and get out of here
 					if ( !$this.isDrawing ) return;
 
 					// Get the current mouse position
-					$this.points.end = $this.methods.coors( e );
+					$this.points.end = $this.methods.coors( event );
 
 					// Merge coordinates into the path
 					$this.preview_path.attr(
@@ -295,7 +302,7 @@
 				},
 
 				// Completes the rectangle
-				stop: function () {
+				stop: function() {
 					if ( $this.preview_path !== null ) {
 						$this.layers.push( $this.preview_path.attrs );
 					}
@@ -305,7 +312,7 @@
 
 				// Calculates the width & height of the rectangle
 				// Flips it if necessary
-				dimensions: function () {
+				dimensions: function() {
 					// Is the shape currently flipped on the X axis?
 					if ( !$this.flipped.x && ( $this.points.end.x <= $this.points.init.x ) ) {
 						$this.flipped.x = true;
@@ -346,7 +353,7 @@
 			// Circle tool
 			circle: {
 				// Starts the circle shape
-				start: function ( e ) {
+				start: function( e ) {
 					// We are drawing now
 					$this.isDrawing = true;
 
@@ -369,7 +376,7 @@
 				},
 
 				// Updates circle as it is drawn
-				move: function ( e ) {
+				move: function( e ) {
 					// If not drawing, get out of here and do nothing
 					if ( !$this.isDrawing ) return;
 
@@ -385,7 +392,7 @@
 				},
 
 				// Completes the circle
-				stop: function () {
+				stop: function() {
 					if ( $this.preview_path !== null ) {
 						$this.layers.push( $this.preview_path.attrs );
 					}
@@ -394,7 +401,7 @@
 				},
 
 				// Calculates the circle's dimensions, and flips if necessary.
-				dimensions: function () {
+				dimensions: function() {
 					var v = {
 						x: Math.abs( $this.points.end.x - $this.points.start.x ),
 						y: Math.abs( $this.points.end.y - $this.points.start.y )
@@ -406,9 +413,36 @@
 				}
 			},
 
+			// Line Tool
+			line: {
+				// Starts the line path with many of the same functions as pen
+				start: function( event ) {
+					// Check to see if the line has started
+					if ( $this.isDrawing ) {
+						// Get current point
+						$this.points.push( $this.methods.coors( event ) );
+
+						// Apply new points to the path
+						$this.preview_path.attr({
+							path: $this.methods.draw.pen.to_svg()
+						});
+					} else {
+						// Initialize the line the same way we would with the pen
+						$this.methods.draw.pen.start( event );
+					}
+
+					return $this;
+				},
+
+				// Stops the current line shape when the mouse leaves the canvas
+				leave: function() {
+					if ( $this.isDrawing ) return $this.methods.draw.pen.stop();
+				}
+			},
+
 			// Select Tool
 			select: {
-				start: function ( e ) {
+				start: function( event ) {
 					return $this;
 				}
 			}
@@ -416,7 +450,7 @@
 
 		// Returns the coordinates of the pointer based upon
 		// the event passed to it
-		coors: function ( event ) {
+		coors: function( event ) {
 			if ( event.type === "mousemove" || event.type === "mousedown" ) {
 				return {
 					x: event.pageX - $this.offset.left,
@@ -431,21 +465,21 @@
 		},
 
 		// Redraws the screen on change
-		redraw: function () {
+		redraw: function() {
 			$this.paper.clear();
 			$this.paper.add( $this.layers );
 			return $this;
 		},
 
 		// Save current layers
-		save: function () {
+		save: function() {
 			console.log( $this.layers );
 			console.log( $this.history );
 			return $this;
 		},
 
 		// Undoes the last action
-		undo: function () {
+		undo: function() {
 			if ( $this.layers.length > 0 ) {
 				$this.options.history.push( $this.layers.pop() );
 				$this.methods.redraw();
@@ -455,7 +489,7 @@
 		},
 
 		// Undos the last undone action
-		redo: function () {
+		redo: function() {
 			if ( $this.options.history.length > 0 ) {
 				$this.layers.push( $this.options.history.pop() );
 				$this.methods.redraw();
@@ -468,7 +502,8 @@
 	// Default settings for DrawPad
 	var defaultOptions = {
 		controls: {
-			container: "#controls",
+			container: $('#controls'),
+			// container: "#controls",
 			pen: "#pen-tool",
 			line: "#line-tool",
 			rectangle: "#rectangle-tool",
@@ -516,7 +551,7 @@
 	};
 
 	// Router for methods in drawpad
-	$.fn.drawPad = function ( method ) {
+	$.fn.drawPad = function( method ) {
 		// Prevent scope issues by using something other than this.
 		$this = this;
 
