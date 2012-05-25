@@ -174,7 +174,6 @@
 			destroy: function() {
 				// Reset state variables
 				$this.isDrawing = false;
-				$this.isSelected = false;
 				$this.points = [];
 
 				// Delete any temporary variables
@@ -239,6 +238,7 @@
 				},
 
 				// Converts pen path to SVG
+				// Copied from https://github.com/ianli/raphael-sketchpad
 				to_svg: function() {
 					if ( $this.points !== null && $this.points.length > 1 ) {
 						var path = "M" + $this.points[0].x + "," + $this.points[0].y;
@@ -399,11 +399,7 @@
 
 				// Completes the circle
 				stop: function() {
-					if ( $this.preview_path !== null ) {
-						$this.layers.push( $this.preview_path.attrs );
-					}
-
-					return ( $this.methods.draw.destroy(), $this );
+					return $this.draw.rectangle.stop();
 				},
 
 				// Calculates the circle's dimensions, and flips if necessary.
@@ -443,14 +439,89 @@
 
 				// Stops the current line shape when the mouse leaves the canvas
 				leave: function() {
-					if ( $this.isDrawing ) return $this.methods.draw.pen.stop();
+					if ( $this.isDrawing ) {
+						return $this.methods.draw.pen.stop();
+					}
 				}
 			},
 
 			// Select Tool
 			select: {
 				start: function( event ) {
+					var coors = $this.methods.coors( event );
+					$this.selection = $this.paper.getElementByPoint( coors.x, coors.y );
+
+					if ( $this.selection !== null ) {
+						if ( $this.isSelected || $this.bounding_box !== undefined ) {
+							$this.bounding_box.remove();
+						}
+
+						$this.isSelected = true;
+
+						// Create the bounding box in the preview_path object
+						$this.bounding_box = $this.paper.rect();
+
+						var bbox = $this.selection.getBBox();
+
+						$this.points = {
+							left: {
+								x: bbox.x,
+								y: bbox.y
+							},
+							right: {
+								x: bbox.x2,
+								y: bbox.y2
+							}
+						};
+
+						// Apply styles to it
+						$this.bounding_box.attr(
+							$.extend(
+								bbox,
+								$this.options.bounding_box
+							)
+						);
+					} else if ( $this.methods.draw.select.insideBBox( event ) ) {
+						console.log( event );
+					} else {
+						return $this.methods.draw.select.destroy();
+					}
+
 					return $this;
+				},
+
+				move: function ( event ) {
+					var coors = $this.methods.coors( event );
+
+					if ( $this.methods.draw.select.insideBBox( coors ) && event.button === 1 ) {
+						console.log( event );
+					}
+
+					return $this;
+				},
+
+				// Selection destructor
+				destroy: function() {
+					// We are no longer selecting a path
+					$this.isSelected = false;
+
+					// Remove the bounding box from the canvas
+					if ( $this.bounding_box !== undefined ) {
+						$this.bounding_box.remove();
+					}
+
+					// Clean up variables
+					delete $this.selection;
+					delete $this.preview_path;
+
+					return $this;
+				},
+
+				// Checks to see if we are inside bounding box
+				insideBBox: function ( coors ) {
+					return $this.isSelected &&
+						( $this.points.left.x <= coors.x <= $this.points.right.x ) &&
+                        ( $this.points.left.y <= coors.y <= $this.points.right.y );
 				}
 			}
 		},
@@ -469,6 +540,12 @@
 					y: event.originalEvent.touches[0].pageY - $this.offset.top
 				};
 			}
+		},
+
+		// Clears the paper
+		clear: function() {
+			$this.paper.clear();
+			return $this;
 		},
 
 		// Redraws the screen on change
@@ -536,9 +613,13 @@
 			position: "top left",
 			attachment: "scroll"
 		},
+		bounding_box: {
+			stroke: "#000000",
+			"stroke-dasharray": [6, 8]
+		},
 		values: {
 			r: 0,
-			stroke: "#444",
+			stroke: "#444444",
 			fill: "none",
 			"fill-opacity": 1.0,
 			"stroke-linecap": "round",

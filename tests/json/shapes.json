@@ -4,7 +4,7 @@
 		"cx": 250,
 		"cy": 250,
 		"r": 90,
-		"stroke-width": 4,
+		"stroke-width": 30,
 		"color": "#444",
 		"title": "Clear Circle",
 		"id": "circle1"

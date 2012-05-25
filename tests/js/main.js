@@ -18,4 +18,15 @@ jQuery(document).ready(function( $ ) {
 		}
 	});
 
+	$('#controls').find('input[type="color"]').ColorPicker({
+		onSubmit: function( hsb, hex, rgb, el ) {
+			$(el).val( '#' + hex );
+			$(el).ColorPickerHide();
+		},
+		onBeforeShow: function() {
+			$(this).ColorPickerSetColor(this.value.substr(1));
+			console.log(this.value.substr(1));
+		}
+	});
+
 });
