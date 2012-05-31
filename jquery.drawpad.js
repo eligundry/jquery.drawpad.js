@@ -40,7 +40,7 @@
 			$this.isSelected = false;
 
 			// Set the default tool from options
-			$this.current_tool = $this.methods.draw[$this.options.default_tool];
+			$this.current_tool = $this.methods.tool_selection( $this.options.default_tool );
 
 			// Redraw layers from history
 			if ( $this.options.layers !== null ) {
@@ -101,8 +101,8 @@
 					event.preventDefault();
 				})
 				// Changes current tool
-				.on("change", "input[name='tool']", function() {
-					$this.current_tool = $this.methods.draw[ $(this).val() ];
+				.on("change", ".tools input[name='tool']", function( e ) {
+					$this.current_tool = $this.methods.tool_selection( $(this).val() );
 				})
 				// Listeners for stroke color picker
 				.find( $this.options.controls.color )
@@ -211,7 +211,9 @@
 				// Redraws pen path as it moves
 				move: function( event ) {
 					// If not drawing, do nothing and get out of here
-					if ( !$this.isDrawing ) return;
+					if ( !$this.isDrawing ) {
+						return;
+					}
 
 					// Push points into array
 					$this.points.push( $this.methods.coors( event ) );
@@ -291,7 +293,9 @@
 				// Redraws the rectangle
 				move: function( event ) {
 					// If not drawing, do nothing and get out of here
-					if ( !$this.isDrawing ) return;
+					if ( !$this.isDrawing ) {
+						return;
+					}
 
 					// Get the current mouse position
 					$this.points.end = $this.methods.coors( event );
@@ -384,7 +388,9 @@
 				// Updates circle as it is drawn
 				move: function( e ) {
 					// If not drawing, get out of here and do nothing
-					if ( !$this.isDrawing ) return;
+					if ( !$this.isDrawing ) {
+						return;
+					}
 
 					// Get current coordinates
 					$this.points.end = $this.methods.coors( e );
@@ -434,7 +440,6 @@
 					});
 
 					return $this;
-
 				},
 
 				// Stops the current line shape when the mouse leaves the canvas
@@ -443,98 +448,99 @@
 						return $this.methods.draw.pen.stop();
 					}
 				}
-			},
+			}
+		},
 
-			// Select Tool
-			select: {
-				start: function( event ) {
-					var coors = $this.methods.coors( event );
-					$this.selection = $this.paper.getElementByPoint( coors.x, coors.y );
+		// Select Tool
+		select: {
+			start: function( event ) {
+				var coors = $this.methods.coors( event );
+				$this.selection = $this.paper.getElementByPoint( coors.x, coors.y );
 
-					if ( $this.selection !== null ) {
-						if ( $this.isSelected || $this.bounding_box !== undefined ) {
-							$this.bounding_box.remove();
-						}
-
-						$this.isSelected = true;
-
-						// Create the bounding box in the preview_path object
-						$this.bounding_box = $this.paper.rect();
-
-						var bbox = $this.selection.getBBox();
-
-						$this.points = {
-							left: {
-								x: bbox.x,
-								y: bbox.y
-							},
-							right: {
-								x: bbox.x2,
-								y: bbox.y2
-							}
-						};
-
-						// Apply styles to it
-						$this.bounding_box.attr(
-							$.extend(
-								bbox,
-								$this.options.bounding_box
-							)
-						);
-					} else if ( $this.methods.draw.select.insideBBox( event ) ) {
-						console.log( event );
-					} else {
-						return $this.methods.draw.select.destroy();
-					}
-
-					return $this;
-				},
-
-				move: function ( event ) {
-					var coors = $this.methods.coors( event );
-
-					if ( $this.methods.draw.select.insideBBox( coors ) && event.button === 1 ) {
-						console.log( event );
-					}
-
-					return $this;
-				},
-
-				// Selection destructor
-				destroy: function() {
-					// We are no longer selecting a path
-					$this.isSelected = false;
-
-					// Remove the bounding box from the canvas
-					if ( $this.bounding_box !== undefined ) {
+				if ( $this.selection !== null ) {
+					if ( $this.isSelected || $this.bounding_box !== undefined ) {
 						$this.bounding_box.remove();
 					}
 
-					// Clean up variables
-					delete $this.selection;
-					delete $this.preview_path;
+					$this.isSelected = true;
 
-					return $this;
-				},
+					// Create the bounding box in the preview_path object
+					$this.bounding_box = $this.paper.rect();
 
-				// Checks to see if we are inside bounding box
-				insideBBox: function ( coors ) {
-					return $this.isSelected &&
-						( $this.points.left.x <= coors.x <= $this.points.right.x ) &&
-                        ( $this.points.left.y <= coors.y <= $this.points.right.y );
+					var bbox = $this.selection.getBBox();
+
+					$this.points = {
+						left: {
+							x: bbox.x,
+							y: bbox.y
+						},
+						right: {
+							x: bbox.x2,
+							y: bbox.y2
+						}
+					};
+
+					// Apply styles to it
+					$this.bounding_box.attr(
+						$.extend(
+							bbox,
+							$this.options.bounding_box
+						)
+					);
+				} else if ( $this.methods.select.insideBBox( event ) ) {
+					console.log( event );
+				} else {
+					return $this.methods.draw.select.destroy();
 				}
+
+				return $this;
+			},
+
+			move: function ( event ) {
+				var coors = $this.methods.coors( event );
+
+				if ( $this.methods.select.insideBBox( coors ) && event.button === 1 ) {
+					console.log( event );
+				}
+
+				return $this;
+			},
+
+			// Selection destructor
+			destroy: function() {
+				// We are no longer selecting a path
+				$this.isSelected = false;
+
+				// Remove the bounding box from the canvas
+				if ( $this.bounding_box !== undefined ) {
+					$this.bounding_box.remove();
+				}
+
+				// Clean up variables
+				delete $this.selection;
+				delete $this.preview_path;
+
+				return $this;
+			},
+
+			// Checks to see if we are inside bounding box
+			insideBBox: function ( coors ) {
+				return $this.isSelected &&
+					( $this.points.left.x <= coors.x <= $this.points.right.x ) &&
+					( $this.points.left.y <= coors.y <= $this.points.right.y );
 			}
 		},
 
 		// Returns the coordinates of the pointer based upon
 		// the event passed to it
 		coors: function( event ) {
+			console.log( event );
 			if ( event.type === "mousemove" || event.type === "mousedown" ) {
 				return {
 					x: event.pageX - $this.offset.left,
 					y: event.pageY - $this.offset.top
 				};
-			} else if ( event.orginalEvent.touches.length === 1 ) {
+			} else if ( event.type === "touchstart" || event.type === "touchmove" ) {
 				return {
 					x: event.originalEvent.touches[0].pageX - $this.offset.left,
 					y: event.originalEvent.touches[0].pageY - $this.offset.top
@@ -580,6 +586,16 @@
 			}
 
 			return $this;
+		},
+
+		tool_selection: function( tool ) {
+			tool = tool.split(".");
+			var result = $this.methods;
+			for ( var i = 0, len = tool.length; i < len; ++i ) {
+				result = result[ tool[i] ];
+			}
+
+			return result;
 		}
 	};
 
@@ -627,7 +643,7 @@
 			"stroke-opacity": 1.0,
 			"stroke-width": 3
 		},
-		default_tool: "pen",
+		default_tool: "draw.pen",
 		right_click: false,
 		layers: [],
 		history: [],
