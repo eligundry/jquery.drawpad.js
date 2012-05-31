@@ -371,7 +371,7 @@
 					$this.preview_path = $this.paper.circle();
 
 					// Get the starting coordinates
-					$this.points.start = $this.methods.coors( e );
+					$this.points.start = $this.methods.draw.circle.coors( e );
 
 					// Apply options to circle attributes
 					$this.preview_path.attr(
@@ -393,7 +393,7 @@
 					}
 
 					// Get current coordinates
-					$this.points.end = $this.methods.coors( e );
+					$this.points.end = $this.methods.draw.circle.coors( e );
 
 					// Apply new dimensions to circle
 					$this.preview_path.attr(
@@ -405,15 +405,26 @@
 
 				// Completes the circle
 				stop: function() {
-					return $this.draw.rectangle.stop();
+					return $this.methods.draw.rectangle.stop();
+				},
+
+				coors: function( event ) {
+					var coordinates = $this.methods.coors( event );
+
+					return {
+						cx: coordinates.x,
+						cy: coordinates.y
+					};
 				},
 
 				// Calculates the circle's dimensions, and flips if necessary.
 				dimensions: function() {
 					var v = {
-						x: Math.abs( $this.points.end.x - $this.points.start.x ),
-						y: Math.abs( $this.points.end.y - $this.points.start.y )
+						x: Math.abs( $this.points.end.cx - $this.points.start.cx ),
+						y: Math.abs( $this.points.end.cy - $this.points.start.cy )
 					};
+
+					console.log(v);
 
 					return {
 						r: Math.sqrt( Math.pow( v.x, 2 ) - Math.pow( v.y, 2 ) )
