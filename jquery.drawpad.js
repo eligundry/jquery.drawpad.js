@@ -480,6 +480,15 @@
 						}
 					};
 
+					// By default, bbox doesn't factor in the stroke width and
+					// draws the box from the middle of the stroke, so
+					// this corrects this by adding padding to the box.
+					var padding = $this.selection.attrs["stroke-width"];
+					bbox.x -= padding / 2;
+					bbox.y -= padding / 2;
+					bbox.width += padding;
+					bbox.height += padding;
+
 					// Apply styles to it
 					$this.bounding_box.attr(
 						$.extend(
@@ -534,7 +543,6 @@
 		// Returns the coordinates of the pointer based upon
 		// the event passed to it
 		coors: function( event ) {
-			console.log( event );
 			if ( event.type === "mousemove" || event.type === "mousedown" ) {
 				return {
 					x: event.pageX - $this.offset.left,
