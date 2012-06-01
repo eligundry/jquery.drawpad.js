@@ -25,18 +25,11 @@
 			// Calculate offset of the canvas
 			$this.offset = this.offset();
 
-			// Create an array for points
-			$this.points = [];
-
-			// Temporary path for previewing drawing
-			$this.preview_path = null;
-
 			// Layers object to store paths and history
 			$this.layers = this.options.layers;
 			$this.history = this.options.histroy;
 
 			// Bool to keep track of whether or not we are drawing or selected
-			$this.isDrawing = false;
 			$this.isSelected = false;
 
 			// Set the default tool from options
@@ -95,6 +88,11 @@
 
 		// Attaches event listeners to DrawPad
 		controls: function() {
+			// Alias some variables from $this
+			var values = $this.options.values,
+				controls = $this.options.controls,
+				methods = $this.methods;
+
 			// Don't refresh the page if form is submitted
 			$this.options.controls.container
 				.on("submit", function( event ) {
@@ -102,69 +100,69 @@
 				})
 				// Changes current tool
 				.on("change", ".tools input[name='tool']", function( e ) {
-					$this.current_tool = $this.methods.tool_selection( $(this).val() );
+					$this.current_tool = methods.tool_selection( $(this).val() );
 				})
 				// Listeners for stroke color picker
-				.find( $this.options.controls.color )
+				.find( controls.color )
 					.val( $this.options.values.stroke )
 					.on("change", function() {
-						$this.options.values.stroke = $(this).val();
+						values.stroke = $(this).val();
 					})
 					.end()
 				// Listeners for stroke opacity
-				.find( $this.options.controls.stroke_opacity )
-					.val( $this.options.values["stroke-opacity"] )
+				.find( controls.stroke_opacity )
+					.val( values["stroke-opacity"] )
 					.on("change", function() {
-						$this.options.values["stroke-opacity"] = $(this).val();
+						values["stroke-opacity"] = $(this).val();
 					})
 					.end()
 				// Listeners for fill color picker
-				.find( $this.options.controls.fill )
-					.val( $this.options.values.fill )
+				.find( controls.fill )
+					.val( values.fill )
 					.on("change", function() {
-						$this.options.values.fill = $(this).val();
+						values.fill = $(this).val();
 					})
 					.end()
 				// Listeners for fill color opacity
-				.find( $this.options.controls.fill_opacity )
-					.val( $this.options.values["fill-opacity"] )
+				.find( controls.fill_opacity )
+					.val( values["fill-opacity"] )
 					.on("change", function() {
-						$this.options.values["fill-opacity"] = $(this).val();
+						values["fill-opacity"] = $(this).val();
 					})
 					.end()
 				// Listeners for stroke width
-				.find( $this.options.controls.width )
-					.val( $this.options.values["stroke-width"] )
+				.find( controls.width )
+					.val( values["stroke-width"] )
 					.on("change", function( e ) {
-						$this.options.values["stroke-width"] = e.srcElement.valueAsNumber;
+						values["stroke-width"] = e.srcElement.valueAsNumber;
 					})
 					.end()
 				// Listeners for border radius
-				.find( $this.options.controls.radius )
-					.val( $this.options.values.r )
+				.find( controls.radius )
+					.val( values.r )
 					.on("change", function( e ) {
-						$this.options.values.r = e.srcElement.valueAsNumber;
+						values.r = e.srcElement.valueAsNumber;
 					})
 					.end()
 				// Undo button event listeners
-				.find( $this.options.controls.undo )
-					.on( "click", $this.methods.undo )
+				.find( controls.undo )
+					.on( "click", methods.undo )
 					.end()
 				// Redo button event listeners
-				.find( $this.options.controls.redo )
-					.on( "click", $this.methods.redo )
+				.find( controls.redo )
+					.on( "click", methods.redo )
 					.end()
 				// Clear button event listeners
-				.find( $this.options.controls.clear )
-					.on( "click", $this.methods.clear )
+				.find( controls.clear )
+					.on( "click", methods.clear )
 					.end()
 				// Save button event listeners
-				.find( $this.options.controls.save )
-					.on( "click", $this.methods.save )
+				.find( controls.save )
+					.on( "click", methods.save )
 					.end()
 				// Redraw button event listeners
-				.find( $this.options.controls.redraw )
-					.on( "click", $this.methods.redraw );
+				.find( controls.redraw )
+					.on( "click", methods.redraw );
 
 			return $this;
 		},
@@ -172,16 +170,22 @@
 		draw: {
 			// Draw destructor
 			destroy: function() {
+				console.log( this );
+				// Alias current tool
+				var ct = $this.current_tool;
+
 				// Reset state variables
 				$this.isDrawing = false;
-				$this.points = [];
 
 				// Delete any temporary variables
-				delete $this.preview_path;
 				delete $this.current_values;
-				delete $this.flipped;
+				delete ct.flipped;
+				delete ct.preview_path;
+				delete ct.points;
 
-				return $this;
+				console.log( this );
+
+				return this;
 			},
 
 			// Pen Tool
@@ -191,21 +195,24 @@
 					// We are drawing now
 					$this.isDrawing = true;
 
+					// Array for points
+					this.points = [];
+
 					// Create path on paper
-					$this.preview_path = $this.paper.path();
+					this.preview_path = $this.paper.path();
 
 					// Start path on clicked coordinate
-					$this.points.push( $this.methods.coors( event ) );
+					this.points.push( $this.methods.coors( event ) );
 
 					// Apply attributes to path
-					$this.preview_path.attr(
+					this.preview_path.attr(
 						$.extend(
 							$this.current_values,
 							$this.options.values
 						)
 					);
 
-					return $this;
+					return this;
 				},
 
 				// Redraws pen path as it moves
@@ -216,23 +223,23 @@
 					}
 
 					// Push points into array
-					$this.points.push( $this.methods.coors( event ) );
+					this.points.push( $this.methods.coors( event ) );
 
 					// Update path with new points
-					$this.preview_path.attr({
-						path: $this.methods.draw.pen.to_svg()
+					this.preview_path.attr({
+						path: this.to_svg()
 					});
 
-					return $this;
+					return this;
 				},
 
 				// Stops the pen
 				stop: function() {
-					if ( $this.preview_path !== null ) {
-						if ( $this.points.length <= 1 ) {
-							$this.preview_path.remove();
+					if ( this.preview_path !== null ) {
+						if ( this.points.length <= 1 ) {
+							this.preview_path.remove();
 						} else {
-							$this.layers.push( $this.preview_path.attrs );
+							$this.layers.push( this.preview_path.attrs );
 						}
 					}
 
@@ -242,11 +249,14 @@
 				// Converts pen path to SVG
 				// Copied from https://github.com/ianli/raphael-sketchpad
 				to_svg: function() {
-					if ( $this.points !== null && $this.points.length > 1 ) {
-						var path = "M" + $this.points[0].x + "," + $this.points[0].y;
+					var points = this.points,
+						len = points.length;
 
-						for (var i = 1, n = $this.points.length; i < n; ++i) {
-							path += "L" + $this.points[i].x + "," + $this.points[i].y;
+					if ( points !== null && len > 1 ) {
+						var path = "M" + points[0].x + "," + points[0].y;
+
+						for (var i = 1; i < len; ++i) {
+							path += "L" + points[i].x + "," + points[i].y;
 						}
 
 						return path;
@@ -263,31 +273,34 @@
 					// We are drawing now
 					$this.isDrawing = true;
 
+					// Initialize points
+					this.points = [];
+
 					// Rectangle isn't flipped by default
-					$this.flipped = {
+					this.flipped = {
 						x: false,
 						y: false
 					};
 
 					// Create the rectangle on the paper object
-					$this.preview_path = $this.paper.rect();
+					this.preview_path = $this.paper.rect();
 
 					// Record the starting point
-					$this.points.start = $this.methods.coors( event );
+					this.points.start = $this.methods.coors( event );
 
 					// Store starting point in a variable in case shape is flipped
-					$this.points.init = $this.methods.coors( event );
+					this.points.init = $this.methods.coors( event );
 
 					// Apply stroke settings to rectangle
-					$this.preview_path.attr(
+					this.preview_path.attr(
 						$.extend(
 							$this.current_values,
 							$this.options.values,
-							$this.points.start
+							this.points.start
 						)
 					);
 
-					return $this;
+					return this;
 				},
 
 				// Redraws the rectangle
@@ -298,64 +311,69 @@
 					}
 
 					// Get the current mouse position
-					$this.points.end = $this.methods.coors( event );
+					this.points.end = $this.methods.coors( event );
 
 					// Merge coordinates into the path
-					$this.preview_path.attr(
+					this.preview_path.attr(
 						$.extend(
-							$this.points.start,
-							$this.methods.draw.rectangle.dimensions()
+							this.points.start,
+							this.dimensions()
 						)
 					);
 
-					return $this;
+					return this;
 				},
 
 				// Completes the rectangle
 				stop: function() {
-					if ( $this.preview_path !== null ) {
-						$this.layers.push( $this.preview_path.attrs );
+					if ( this.preview_path !== null ) {
+						$this.layers.push( this.preview_path.attrs );
 					}
 
-					return ( $this.methods.draw.destroy(), $this );
+					return ( $this.methods.draw.destroy(), this );
 				},
 
 				// Calculates the width & height of the rectangle
 				// Flips it if necessary
 				dimensions: function() {
+					var flipped = this.flipped,
+						start = this.points.start,
+						init = this.points.init,
+						end = this.points.end;
+
 					// Is the shape currently flipped on the X axis?
-					if ( !$this.flipped.x && ( $this.points.end.x <= $this.points.init.x ) ) {
-						$this.flipped.x = true;
-					} else if ( $this.points.end.x > $this.points.init.x ) {
-						$this.flipped.x = false;
+					if ( !flipped.x && ( end.x <= init.x ) ) {
+						flipped.x = true;
+					} else if ( end.x > init.x ) {
+						flipped.x = false;
 					}
 
 					// Is the shape currently flipped on the Y axis?
-					if ( !$this.flipped.y && ( $this.points.end.y <= $this.points.init.y ) ) {
-						$this.flipped.y = true;
-					} else if ( $this.points.end.y > $this.points.init.y ) {
-						$this.flipped.y = false;
+					if ( !flipped.y && ( end.y <= init.y ) ) {
+						flipped.y = true;
+					} else if ( end.y > init.y ) {
+						flipped.y = false;
 					}
 
 					// Switch points if flipped
-					if ( $this.flipped.x ) {
-						$this.points.start.x = $this.points.end.x;
-						$this.points.end.x = $this.points.init.x;
+					if ( flipped.x ) {
+						start.x = end.x;
+						end.x = init.x;
 					} else {
-						$this.points.start.x = $this.points.init.x;
+						start.x = init.x;
 					}
 
-					if ( $this.flipped.y ) {
-						$this.points.start.y = $this.points.end.y;
-						$this.points.end.y = $this.points.init.y;
+					if ( flipped.y ) {
+						start.y = end.y;
+						end.y = init.y;
 					} else {
-						$this.points.start.y = $this.points.init.y;
+						start.y = init.y;
 					}
 
 					// Return the calculated width and height
 					return {
-						height: $this.points.end.y - $this.points.start.y,
-						width: $this.points.end.x - $this.points.start.x
+						height: end.y - start.y,
+						width: end.x - start.x
 					};
 				}
 			},
@@ -368,21 +386,21 @@
 					$this.isDrawing = true;
 
 					// Create circle object on paper
-					$this.preview_path = $this.paper.circle();
+					this.preview_path = $this.paper.circle();
 
 					// Get the starting coordinates
-					$this.points.start = $this.methods.draw.circle.coors( e );
+					this.points.start = this.coors( e );
 
 					// Apply options to circle attributes
-					$this.preview_path.attr(
+					this.preview_path.attr(
 						$.extend(
 							$this.current_values,
 							$this.options.values,
-							$this.points.start
+							this.points.start
 						)
 					);
 
-					return $this;
+					return this;
 				},
 
 				// Updates circle as it is drawn
@@ -393,14 +411,14 @@
 					}
 
 					// Get current coordinates
-					$this.points.end = $this.methods.draw.circle.coors( e );
+					this.points.end = this.coors( e );
 
 					// Apply new dimensions to circle
-					$this.preview_path.attr(
-						$this.methods.draw.circle.dimensions()
+					this.preview_path.attr(
+						this.dimensions()
 					);
 
-					return $this;
+					return this;
 				},
 
 				// Completes the circle
@@ -419,12 +437,14 @@
 
 				// Calculates the circle's dimensions, and flips if necessary.
 				dimensions: function() {
-					var v = {
-						x: Math.abs( $this.points.end.cx - $this.points.start.cx ),
-						y: Math.abs( $this.points.end.cy - $this.points.start.cy )
-					};
+					// Cache start and end points
+					var start = $this.points.start,
+						end = $this.points.end;
 
-					console.log(v);
+					var v = {
+						x: Math.abs( end.cx - start.cx ),
+						y: Math.abs( end.cy - start.cy )
+					};
 
 					return {
 						r: Math.sqrt( Math.pow( v.x, 2 ) - Math.pow( v.y, 2 ) )
@@ -443,14 +463,14 @@
 					}
 
 					// In this case, the line has started, so get current point
-					$this.points.push( $this.methods.coors( event ) );
+					this.points.push( $this.methods.coors( event ) );
 
 					// Apply new points to the path
-					$this.preview_path.attr({
+					this.preview_path.attr({
 						path: $this.methods.draw.pen.to_svg()
 					});
 
-					return $this;
+					return this;
 				},
 
 				// Stops the current line shape when the mouse leaves the canvas
@@ -507,16 +527,16 @@
 							$this.options.bounding_box
 						)
 					);
-				} else if ( $this.methods.select.insideBBox( event ) ) {
+				} else if ( this.insideBBox( event ) ) {
 					console.log( event );
 				} else {
-					return $this.methods.draw.select.destroy();
+					return this.destroy();
 				}
 
 				return $this;
 			},
 
-			move: function ( event ) {
+			move: function( event ) {
 				var coors = $this.methods.coors( event );
 
 				if ( $this.methods.select.insideBBox( coors ) && event.button === 1 ) {
@@ -538,16 +558,20 @@
 
 				// Clean up variables
 				delete $this.selection;
-				delete $this.preview_path;
+				delete $this.bounding_box;
 
 				return $this;
 			},
 
 			// Checks to see if we are inside bounding box
-			insideBBox: function ( coors ) {
+			insideBBox: function( coors ) {
+				// Cache left and right points
+				var left = $this.points.left,
+					right = $this.points.right;
+
 				return $this.isSelected &&
-					( $this.points.left.x <= coors.x <= $this.points.right.x ) &&
-					( $this.points.left.y <= coors.y <= $this.points.right.y );
+					( left.x <= coors.x <= right.x ) &&
+					( left.y <= coors.y <= right.y );
 			}
 		},
 
@@ -650,7 +674,7 @@
 		},
 		bounding_box: {
 			stroke: "#000000",
-			"stroke-dasharray": [6, 8]
+			"stroke-dasharray": "--"
 		},
 		values: {
 			r: 0,
