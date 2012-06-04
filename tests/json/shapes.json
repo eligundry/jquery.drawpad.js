@@ -10,6 +10,16 @@
 		"id": "circle1"
 	},
 	{
+		"type": "circle",
+		"cx": 300,
+		"cy": 300,
+		"r": 50,
+		"stroke-width": 30,
+		"color": "#444",
+		"title": "Clear Circle",
+		"id": "circle2"
+	},
+	{
 		"type": "rect",
 		"x": 100,
 		"y": 100,

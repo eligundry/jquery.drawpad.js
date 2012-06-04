@@ -230,8 +230,9 @@ body {
 }
 
 #drawpad {
-	min-height: 500px;
+	min-height: 1000px;
 	width: 100%;
+	-webkit-overflow-scrolling: touch;
 }
 
 #drawpad svg {

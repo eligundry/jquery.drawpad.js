@@ -327,6 +327,7 @@
             gradient: 0,
             height: 0,
             href: "http://raphaeljs.com/",
+			id: null,
             "letter-spacing": 0,
             opacity: 1,
             path: "M0,0",

@@ -45,7 +45,7 @@
 			$this
 				// Right click handler
 				.bind("contextmenu", function( event ) {
-					if ( typeof( $this.options.right_click ) === "function" ) {
+					if ( typeof $this.options.right_click === "function" ) {
 						$this.options.right_click( event );
 					}
 
@@ -53,27 +53,27 @@
 					event.preventDefault();
 				})
 				// Prevent default actions for all events on the canvas
-				.on("mousedown touchstart mousemove touchmove mouseup touchend", function( event ) {
-					event.preventDefault();
+				.on("mousedown mousemove touchstart touchmove", function( event ) {
+					$this.methods.edge_detect( event );
 				})
 				.on("mousedown touchstart", function( event ) {
-					if ( typeof( $this.current_tool.start ) !== "undefined" ) {
+					if ( typeof $this.current_tool.start === "function" ) {
 						$this.current_tool.start( event );
 					}
 				})
 				.on("mousemove touchmove", function( event ) {
-					if ( typeof( $this.current_tool.move ) !== "undefined" ) {
+					if ( typeof $this.current_tool.move === "function" ) {
 						$this.current_tool.move( event );
 					}
 				})
 				.on("mouseup touchend", function() {
-					if ( typeof( $this.current_tool.stop ) !== "undefined" ) {
+					if ( typeof $this.current_tool.stop === "function" ) {
 						$this.current_tool.stop();
 					}
 				})
 				// If the mouse leaves the canvas, end the shape
 				.on("mouseleave", function() {
-					if ( typeof( $this.current_tool.leave ) !== "undefined" ) {
+					if ( typeof $this.current_tool.leave === "function" ) {
 						$this.current_tool.leave();
 					}
 				});
@@ -170,7 +170,6 @@
 		draw: {
 			// Draw destructor
 			destroy: function() {
-				console.log( this );
 				// Alias current tool
 				var ct = $this.current_tool;
 
@@ -182,8 +181,6 @@
 				delete ct.flipped;
 				delete ct.preview_path;
 				delete ct.points;
-
-				console.log( this );
 
 				return this;
 			},
@@ -236,14 +233,10 @@
 				// Stops the pen
 				stop: function() {
 					if ( this.preview_path !== null ) {
-						if ( this.points.length <= 1 ) {
-							this.preview_path.remove();
-						} else {
-							$this.layers.push( this.preview_path.attrs );
-						}
+						$this.layers.push( this.preview_path.attrs );
 					}
 
-					return ( $this.methods.draw.destroy(), $this );
+					return ( $this.methods.draw.destroy(), this );
 				},
 
 				// Converts pen path to SVG
@@ -388,8 +381,17 @@
 					// Create circle object on paper
 					this.preview_path = $this.paper.circle();
 
+					// Circle is not flipped just yet
+					this.flipped = {
+						cx: false,
+						cy: false
+					};
+
 					// Get the starting coordinates
-					this.points.start = this.coors( e );
+					this.points = {
+						start: this.coors( e ),
+						init: this.coors( e )
+					};
 
 					// Apply options to circle attributes
 					this.preview_path.attr(
@@ -423,31 +425,72 @@
 
 				// Completes the circle
 				stop: function() {
-					return $this.methods.draw.rectangle.stop();
+					if ( this.preview_path !== null ) {
+						$this.layers.push( this.preview_path.attrs );
+					}
+
+					return ( $this.methods.draw.destroy(), this );
 				},
 
 				coors: function( event ) {
 					var coordinates = $this.methods.coors( event );
 
-					return {
-						cx: coordinates.x,
-						cy: coordinates.y
-					};
+					coordinates.cx = coordinates.x;
+					coordinates.cy = coordinates.y;
+
+					return coordinates;
 				},
 
 				// Calculates the circle's dimensions, and flips if necessary.
 				dimensions: function() {
 					// Cache start and end points
-					var start = $this.points.start,
-						end = $this.points.end;
+					var start = this.points.start,
+						init = this.points.init,
+						end = this.points.end,
+						flipped = this.flipped;
+
+					// Is circle currently flipped on the CX axis?
+					if ( !flipped.cx && ( end.cx <= init.cx ) ) {
+						flipped.cx = true;
+					} else if ( end.cx > init.cx ) {
+						flipped.cx = false;
+					}
+
+					// Is circle currently flipped on the CY axis?
+					if ( !flipped.cy && ( end.cy <= init.cy ) ) {
+						flipped.cy = true;
+					} else if ( end.cy > init.cy ) {
+						flipped.cy = false;
+					}
+
+					// Switch points if flipped
+					if ( flipped.cx ) {
+						start.cx = end.cx;
+						end.cx = init.cx;
+					} else {
+						start.cx = init.cx;
+					}
+
+					if ( flipped.cy ) {
+						start.cy = end.cy;
+						end.cy = init.cy;
+					} else {
+						start.cy = init.cy;
+					}
 
 					var v = {
 						x: Math.abs( end.cx - start.cx ),
 						y: Math.abs( end.cy - start.cy )
 					};
 
+					var r = Math.sqrt( Math.pow( v.x, 2 ) - Math.pow( v.y, 2 ) );
+
+					if ( r === "NaN" ) {
+						r = 0;
+					}
+
 					return {
-						r: Math.sqrt( Math.pow( v.x, 2 ) - Math.pow( v.y, 2 ) )
+						r: r
 					};
 				}
 			},
@@ -485,50 +528,51 @@
 		// Select Tool
 		select: {
 			start: function( event ) {
-				var coors = $this.methods.coors( event );
-				$this.selection = $this.paper.getElementByPoint( coors.x, coors.y );
 
-				if ( $this.selection !== null ) {
-					if ( $this.isSelected || $this.bounding_box !== undefined ) {
-						$this.bounding_box.remove();
+				var coors = $this.methods.coors( event );
+
+				if ( $this.paper.getElementByPoint( coors.x, coors.y ) ) {
+					this.selection = $this.paper.getElementByPoint( coors.x, coors.y );
+					var padding = this.selection.attrs["stroke-width"];
+
+					if ( $this.isSelected || this.bounding_box !== undefined ) {
+						this.bounding_box.remove();
 					}
 
 					$this.isSelected = true;
 
 					// Create the bounding box in the preview_path object
-					$this.bounding_box = $this.paper.rect();
+					this.bounding_box = $this.paper.set();
 
-					var bbox = $this.selection.getBBox();
-
-					$this.points = {
-						left: {
-							x: bbox.x,
-							y: bbox.y
-						},
-						right: {
-							x: bbox.x2,
-							y: bbox.y2
-						}
-					};
+					var bbox = this.selection.getBBox();
 
 					// By default, bbox doesn't factor in the stroke width and
 					// draws the box from the middle of the stroke, so
 					// this corrects this by adding padding to the box.
-					var padding = $this.selection.attrs["stroke-width"];
-					bbox.x -= padding / 2;
-					bbox.y -= padding / 2;
+					this.points = {
+						left: {
+							x: bbox.x -= padding / 2,
+							y: bbox.y -= padding / 2
+						},
+						right: {
+							x: bbox.x2 += padding / 2,
+							y: bbox.y2 += padding / 2
+						}
+					};
+
 					bbox.width += padding;
 					bbox.height += padding;
 
-					// Apply styles to it
-					$this.bounding_box.attr(
-						$.extend(
-							bbox,
-							$this.options.bounding_box
-						)
+					this.bounding_box.push(
+						$this.paper.rect( bbox.x, bbox.y, bbox.width, bbox.height, 0 ),
+						$this.paper.circle( bbox.x, bbox.y, 10 ),
+						$this.paper.circle( bbox.x, bbox.y2, 10 ),
+						$this.paper.circle( bbox.x2, bbox.y, 10 ),
+						$this.paper.circle( bbox.x2, bbox.y2, 10 )
 					);
-				} else if ( this.insideBBox( event ) ) {
-					console.log( event );
+
+					// Apply styles to it
+					this.bounding_box.attr( $this.options.bounding_box );
 				} else {
 					return this.destroy();
 				}
@@ -537,13 +581,15 @@
 			},
 
 			move: function( event ) {
-				var coors = $this.methods.coors( event );
+				if ( $this.isSelected ) {
+					var coors = $this.methods.coors( event );
 
-				if ( $this.methods.select.insideBBox( coors ) && event.button === 1 ) {
-					console.log( event );
+					if ( this.insideBBox( coors ) && event.button === 1 ) {
+						console.log( event );
+					}
 				}
 
-				return $this;
+				return this;
 			},
 
 			// Selection destructor
@@ -566,8 +612,8 @@
 			// Checks to see if we are inside bounding box
 			insideBBox: function( coors ) {
 				// Cache left and right points
-				var left = $this.points.left,
-					right = $this.points.right;
+				var left = this.points.left,
+					right = this.points.right;
 
 				return $this.isSelected &&
 					( left.x <= coors.x <= right.x ) &&
@@ -589,6 +635,46 @@
 					y: event.originalEvent.touches[0].pageY - $this.offset.top
 				};
 			}
+		},
+
+		// Detects edges of canvas and scrolls accordingly
+		edge_detect: function( event ) {
+			if ( $this.isDrawing || $this.isSelected ) {
+				var coors = $this.methods.coors( event ),
+					edges = $this.options.edges,
+					element = {
+						h: event.srcElement.clientHeight,
+						w: event.srcElement.clientWidth
+					},
+					view = {
+						h: event.view.innerHeight,
+						w: event.view.innerWidth
+					},
+					jump = {
+						v: 0,
+						h: 0
+					},
+					scroll = {
+						x: view.w - coors.x,
+						y: view.h- coors.y
+					};
+
+				if ( ( Math.abs( scroll.x ) <= edges.x ) &&
+						( coors.x <= Math.abs( element.h - edges.x ) ) ) {
+					jump.h = ( scroll.x <= 0 ) ? -edges.jump : edges.jump;
+				}
+
+				if ( ( Math.abs( scroll.y ) <= edges.y ) &&
+						( coors.y <= Math.abs( element.h - edges.y ) ) ) {
+					jump.v = ( scroll.y <= 0 ) ? -edges.jump : edges.jump;
+				}
+
+				if ( jump.h || jump.v ) {
+					window.scrollBy( jump.h, jump.v );
+				}
+			}
+
+			event.preventDefault();
 		},
 
 		// Clears the paper
@@ -685,6 +771,11 @@
 			"stroke-linejoin": "round",
 			"stroke-opacity": 1.0,
 			"stroke-width": 3
+		},
+		edges: {
+			x: 20,
+			y: 20,
+			jump: 10
 		},
 		default_tool: "draw.pen",
 		right_click: false,
