@@ -6,14 +6,16 @@
 		"r": 90,
 		"stroke-width": 30,
 		"color": "#444",
+		"fill": "transparent",
 		"title": "Clear Circle",
 		"id": "circle1"
 	},
 	{
 		"type": "circle",
 		"cx": 300,
-		"cy": 300,
+		"cy": 500,
 		"r": 50,
+		"fill": "transparent",
 		"stroke-width": 30,
 		"color": "#444",
 		"title": "Clear Circle",
