@@ -39,6 +39,7 @@
 
 			// Set the default tool from options
 			$this.current_tool = $this.methods.tool_selection( $this.options.default_tool );
+			$this.current_values = {};
 
 			// Redraw layers from history
 			if ( $this.options.layers !== null ) {
@@ -163,23 +164,49 @@
 			// Draw constructor
 			init: function( event ) {
 				// Cache the coordinates
-				var coors = $this.methods.coors;
+				var coors = $this.methods.coors( event ),
+					ct = $this.current_tool;
 
 				// We are drawing now
 				$this.isDrawing = true;
 
 				// Object/array for points, depending on the tool
-				if ( $this.current_tool !== $this.methods.draw.pen ) {
-					this.points = {
+				if ( ct !== $this.methods.draw.pen ) {
+					ct.points = {
 						start: coors,
-						init: coors,
+						init: $.extend( {}, coors ),
 						end: {}
 					};
+
+					ct.flipped = {
+						x: false,
+						y: false
+					};
+
+                    if ( ct === $this.methods.draw.circle ) {
+						ct.cx = ct.x;
+						ct.cy = ct.y;
+                    }
+
 				} else {
-					this.points = [coors];
+					ct.points = [];
 				}
 
-				return this;
+				// Create styles for path
+				$.extend( $this.current_values, $this.options.values );
+
+				return ct;
+			},
+
+			// Generic stop function
+			stop: function() {
+				var ct = $this.current_tool;
+
+				if ( ct.preview_path !== null ) {
+					$this.layers.push( ct.preview_path.attrs );
+				}
+
+				return $this.methods.draw.destroy();
 			},
 
 			// Draw destructor
@@ -210,12 +237,7 @@
 					this.preview_path = $this.paper.path();
 
 					// Apply attributes to path
-					this.preview_path.attr(
-						$.extend(
-							$this.current_values,
-							$this.options.values
-						)
-					);
+					this.preview_path.attr( $this.current_values );
 
 					return this;
 				},
@@ -223,9 +245,7 @@
 				// Redraws pen path as it moves
 				move: function( event ) {
 					// If not drawing, do nothing and get out of here
-					if ( !$this.isDrawing ) {
-						return;
-					}
+					if ( !$this.isDrawing ) return;
 
 					// Push points into array
 					this.points.push( $this.methods.coors( event ) );
@@ -240,11 +260,7 @@
 
 				// Stops the pen
 				stop: function( event ) {
-					if ( this.preview_path !== null ) {
-						$this.layers.push( this.preview_path.attrs );
-					}
-
-					return ( $this.methods.draw.destroy(), this );
+					$this.methods.draw.stop();
 				},
 
 				// Converts pen path to SVG
@@ -271,32 +287,16 @@
 			rectangle: {
 				// Starts the rectangle shape
 				start: function( event ) {
-					// We are drawing now
-					$this.isDrawing = true;
-
-					// Initialize points
-					this.points = [];
-
-					// Rectangle isn't flipped by default
-					this.flipped = {
-						x: false,
-						y: false
-					};
+					// Initialize the path
+					$this.methods.draw.init( event );
 
 					// Create the rectangle on the paper object
 					this.preview_path = $this.paper.rect();
-
-					// Record the starting point
-					this.points.start = $this.methods.coors( event );
-
-					// Copy starting point in a variable in case shape is flipped
-					this.points.init = $.extend( {}, this.points.start );
 
 					// Apply stroke settings to rectangle
 					this.preview_path.attr(
 						$.extend(
 							$this.current_values,
-							$this.options.values,
 							this.points.start
 						)
 					);
@@ -317,8 +317,8 @@
 					// Merge coordinates into the path
 					this.preview_path.attr(
 						$.extend(
-							this.points.start,
-							this.dimensions()
+							this.dimensions(),
+							this.points.start
 						)
 					);
 
@@ -382,28 +382,17 @@
 			// Circle tool
 			circle: {
 				// Starts the circle shape
-				start: function( e ) {
-					// We are drawing now
-					$this.isDrawing = true;
+				start: function( event ) {
+					// Initialize path
+					$this.methods.draw.init( event );
 
 					// Create circle object on paper
 					this.preview_path = $this.paper.circle();
-
-					// Circle is not flipped just yet
-					this.flipped = {
-						cx: false,
-						cy: false
-					};
-
-					// Get the starting coordinates
-					this.points = { start: this.coors( e ) };
-					this.points.init = $.extend( {}, this.points.start );
 
 					// Apply options to circle attributes
 					this.preview_path.attr(
 						$.extend(
 							$this.current_values,
-							$this.options.values,
 							this.points.start
 						)
 					);
@@ -453,7 +442,9 @@
 					var start = this.points.start,
 						init = this.points.init,
 						end = this.points.end,
-						flipped = this.flipped;
+						flipped = this.flipped,
+						r,
+						v;
 
 					// Is circle currently flipped on the CX axis?
 					if ( !flipped.cx && ( end.cx <= init.cx ) ) {
@@ -484,12 +475,12 @@
 						start.cy = init.cy;
 					}
 
-					var v = {
+					v = {
 						x: Math.abs( end.cx - start.cx ),
 						y: Math.abs( end.cy - start.cy )
 					};
 
-					var r = Math.sqrt( Math.pow( v.x, 2 ) - Math.pow( v.y, 2 ) );
+					r = Math.sqrt( Math.pow( v.x, 2 ) - Math.pow( v.y, 2 ) );
 
 					if ( r === "NaN" ) {
 						r = 0;
@@ -535,54 +526,19 @@
 		select: {
 			start: function( event ) {
 				var coors = $this.methods.coors( event ),
-					box_opts = $this.options.bounding_box,
 					paper = $this.paper,
-					bbox,
-					padding;
+					handles = $this.paper.set();
 
-				this.selection = $this.paper.getElementByPoint( coors.x, coors.y );
+				this.selection = paper.getElementByPoint( coors.x, coors.y );
 
-				// Assignment and conditional, all in one. Isn't it beautiful?
 				if ( this.selection !== null && !$this.isSelected ) {
 					// A path is now selected
 					$this.isSelected = true;
 
-					// Create the bounding box in the preview_path object
-					this.bounding_box = $this.paper.set();
-
-					// Create the bounding box. Note that I am copying itself
-					// into itself. This is so we don't modify the selection
-					// bounding box.
-					bbox = $.extend( {}, this.selection.getBBox( true ) );
-
-					// By default, bbox doesn't factor in the stroke width and
-					// draws the box from the middle of the stroke, so
-					// this corrects this by adding padding to the box.
-					padding = this.selection.attrs["stroke-width"];
-
-					this.points = {
-						left: {
-							x: bbox.x -= padding / 2,
-							y: bbox.y -= padding / 2
-						},
-						right: {
-							x: bbox.x2 += padding / 2,
-							y: bbox.y2 += padding / 2
-						}
-					};
-
-					bbox.width += padding;
-					bbox.height += padding;
-
-					// Apply controls to bounding box
-					this.bounding_box.push(
-						paper.rect( bbox.x, bbox.y, bbox.width, bbox.height, 0 ).attr( box_opts.box ),
-						paper.circle( bbox.x, bbox.y, 5 ).attr( box_opts.controls ),
-						paper.circle( bbox.x, bbox.y2, 5 ).attr( box_opts.controls ),
-						paper.circle( bbox.x2, bbox.y, 5 ).attr( box_opts.controls ),
-						paper.circle( bbox.x2, bbox.y2, 5 ).attr( box_opts.controls )
-					);
+					// Constuct bounding box around path
+					this.bounding_box = this.bbox();
 				} else if ( $this.isSelected && this.selection === null ) {
+					// Destroy path if deselected
 					return this.destroy();
 				}
 
@@ -590,7 +546,7 @@
 			},
 
 			move: function( event ) {
-				if ( $this.isSelected ) {
+				if ( $this.isSelected && event.button !== 0 ) {
 					console.log( event );
 				}
 			},
@@ -608,16 +564,101 @@
 				delete this.bounding_box;
 
 				return this;
+			},
+
+			// Bounding box constructor
+			bbox: function() {
+				var paper = $this.paper,
+					selection = this.selection,
+					padding = selection.attrs["stroke-width"],
+					bbox = $.extend( {}, selection.getBBox( true ) ),
+					box_opts = $this.options.bounding_box,
+					handles,
+					outline;
+
+				bbox.x -= padding / 2;
+				bbox.y -= padding / 2;
+				bbox.x2 += padding / 2;
+				bbox.y2 += padding / 2;
+				bbox.width += padding;
+				bbox.height += padding;
+
+				outline = paper
+					.rect(
+						bbox.x,
+						bbox.y,
+						bbox.width,
+						bbox.height,
+						0
+					)
+					.attr( box_opts.box );
+
+				handles = paper.set().push(
+					// Top left (handles[0])
+					paper.circle( bbox.x, bbox.y, 5 ).attr({ cursor: "nw-resize" }),
+					// Top right (handles[1])
+					paper.circle( bbox.x2, bbox.y, 5 ).attr({ cursor: "ne-resize" }),
+					// Bottom right (handles[2])
+					paper.circle( bbox.x2, bbox.y2, 5 ).attr({ cursor: "se-resize" }),
+					// Bottom left (handles[3])
+					paper.circle( bbox.x, bbox.y2, 5 ).attr({ cursor: "sw-resize" })
+				).attr( box_opts.controls );
+
+				outline.drag(function( dx, dy ) {
+					// Move the box and selection at the same time
+					selection.attr({
+						x: bbox.x + ( dx + padding / 2 ),
+						y: bbox.y + ( dy + padding / 2 ),
+						cx: bbox.x + ( dx + padding / 2 ) + selection.attr( 'r' ),
+						cy: bbox.y + ( dy + padding / 2 ) + selection.attr( 'r' )
+					});
+
+					this.attr({
+						x: bbox.x + dx,
+						y: bbox.y + dy,
+						cursor: "move"
+					});
+
+					// Move the handles along with the box
+					handles[0].attr({
+						cx: bbox.x + dx,
+						cy: bbox.y + dy
+					});
+
+					handles[1].attr({
+						cx: bbox.x2 + dx,
+						cy: bbox.y + dy
+					});
+
+					handles[2].attr({
+						cx: bbox.x2 + dx,
+						cy: bbox.y2 + dy
+					});
+
+					handles[3].attr({
+						cx: bbox.x + dx,
+						cy: bbox.y2 + dy
+					});
+				});
+
+				handles[2].drag(function( dx, dy ) {
+					console.log( dx );
+					console.log( dy );
+				});
+
+				return paper.set().push( outline, handles );
 			}
 		},
 
 		// Returns the coordinates of the pointer based upon
 		// the event passed to it
 		coors: function( event ) {
+			var coors;
+
 			switch ( event.type ) {
 				case 'mousemove':
 				case 'mousedown':
-					return {
+					coors = {
 						x: event.pageX - $this.offset.left,
 						y: event.pageY - $this.offset.top
 					};
@@ -626,12 +667,19 @@
 				// Touch events
 				case 'touchstart':
 				case 'touchmove':
-					return {
+					coors = {
 						x: event.originalEvent.touches[0].pageX - $this.offset.left,
 						y: event.originalEvent.touches[0].pageY - $this.offset.top
 					};
 					break;
 			}
+
+			if ( $this.current_tool === $this.methods.draw.circle ) {
+				coors.cx = coors.x;
+				coors.cy = coors.y;
+			}
+
+			return coors;
 		},
 
 		// Detects edges of canvas and scrolls accordingly
