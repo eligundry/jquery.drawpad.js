@@ -2,7 +2,7 @@
  * Name: jquery.drawpad
  * Author: Eli Gundry
  * Description: Extensible plugin for jQuery and Raphael.js that allows for vector drawing
- * Dependencies: jQuery, Raphael.js, Modernizr
+ * Dependencies: jQuery, Raphael.js, Raphael.FreeTransform, Modernizr
  * License: GPL V2
  */
 
@@ -31,7 +31,7 @@
 
 			// Layers object to store paths and history
 			$this.layers = this.options.layers;
-			$this.history = this.options.histroy;
+			$this.history = this.options.history;
 
 			// Bool to keep track of whether or not we are drawing or selected
 			$this.isDrawing = false;
@@ -69,6 +69,7 @@
 					if ( $this.current_tool === $this.methods.select ) {
 						$this.methods.method_selection( event );
 					}
+					event.preventDefault();
 				});
 
 			// Attach event listeners to toolbar
@@ -83,6 +84,7 @@
 		controls: function() {
 			// Alias some variables from $this
 			var values = $this.options.values,
+				current = $this.current_values,
 				controls = $this.options.controls,
 				methods = $this.methods;
 
@@ -97,44 +99,44 @@
 				})
 				// Listeners for stroke color picker
 				.find( controls.color )
-					.val( $this.options.values.stroke )
-					.on("change", function() {
-						values.stroke = $(this).val();
+					.val( values.stroke )
+					.on("mouseleave", function( e ) {
+						current.stroke = $(this).val();
 					})
 					.end()
 				// Listeners for stroke opacity
 				.find( controls.stroke_opacity )
 					.val( values["stroke-opacity"] )
 					.on("change", function() {
-						values["stroke-opacity"] = $(this).val();
+						current["stroke-opacity"] = $(this).val();
 					})
 					.end()
 				// Listeners for fill color picker
 				.find( controls.fill )
 					.val( values.fill )
-					.on("change", function() {
-						values.fill = $(this).val();
+					.on("mouseleave", function() {
+						current.fill = $(this).val();
 					})
 					.end()
 				// Listeners for fill color opacity
 				.find( controls.fill_opacity )
 					.val( values["fill-opacity"] )
 					.on("change", function() {
-						values["fill-opacity"] = $(this).val();
+						current["fill-opacity"] = $(this).val();
 					})
 					.end()
 				// Listeners for stroke width
 				.find( controls.width )
 					.val( values["stroke-width"] )
 					.on("change", function( e ) {
-						values["stroke-width"] = e.srcElement.valueAsNumber;
+						current["stroke-width"] = e.srcElement.valueAsNumber;
 					})
 					.end()
 				// Listeners for border radius
 				.find( controls.radius )
 					.val( values.r )
 					.on("change", function( e ) {
-						values.r = e.srcElement.valueAsNumber;
+						current.r = e.srcElement.valueAsNumber;
 					})
 					.end()
 				// Undo button event listeners
@@ -157,7 +159,7 @@
 				.find( controls.redraw )
 					.on( "click", methods.redraw );
 
-			return $this;
+			return this;
 		},
 
 		draw: {
@@ -165,7 +167,8 @@
 			init: function( event ) {
 				// Cache the coordinates
 				var coors = $this.methods.coors( event ),
-					ct = $this.current_tool;
+					ct = $this.current_tool,
+					cv = $this.current_values;
 
 				// We are drawing now
 				$this.isDrawing = true;
@@ -193,17 +196,21 @@
 				}
 
 				// Create styles for path
-				$.extend( $this.current_values, $this.options.values );
+				ct.values = $.extend( true, {}, $this.options.values, cv );
 
 				return ct;
 			},
 
 			// Generic stop function
 			stop: function() {
-				var ct = $this.current_tool;
+				var ct = $this.current_tool,
+					path = $.extend(
+						{ type: ct.preview_path.type },
+						ct.preview_path.attrs
+					);
 
 				if ( ct.preview_path !== null ) {
-					$this.layers.push( ct.preview_path.attrs );
+					$this.layers.push( path );
 				}
 
 				return $this.methods.draw.destroy();
@@ -218,10 +225,11 @@
 				$this.isDrawing = false;
 
 				// Delete any temporary variables
-				delete $this.current_values;
+				// delete $this.current_values;
 				delete ct.flipped;
 				delete ct.preview_path;
 				delete ct.points;
+				delete ct.values;
 
 				return this;
 			},
@@ -237,7 +245,12 @@
 					this.preview_path = $this.paper.path();
 
 					// Apply attributes to path
-					this.preview_path.attr( $this.current_values );
+					this.preview_path.attr(
+						$.extend(
+							this.values,
+							{ id: $this.options.path_prefix + this.preview_path.id }
+						)
+					);
 
 					return this;
 				},
@@ -296,8 +309,9 @@
 					// Apply stroke settings to rectangle
 					this.preview_path.attr(
 						$.extend(
-							$this.current_values,
-							this.points.start
+							this.values,
+							this.points.start,
+							{ id: $this.options.path_prefix + this.preview_path.id }
 						)
 					);
 
@@ -327,11 +341,7 @@
 
 				// Completes the rectangle
 				stop: function() {
-					if ( this.preview_path !== null ) {
-						$this.layers.push( this.preview_path.attrs );
-					}
-
-					return ( $this.methods.draw.destroy(), this );
+					$this.methods.draw.stop();
 				},
 
 				// Calculates the width & height of the rectangle
@@ -342,33 +352,24 @@
 						init = this.points.init,
 						end = this.points.end;
 
-					// Is the shape currently flipped on the X axis?
-					if ( !flipped.x && ( end.x <= init.x ) ) {
-						flipped.x = true;
-					} else if ( end.x > init.x ) {
-						flipped.x = false;
-					}
+					for ( var i = 0; i < 2; ++i ) {
+						// What axis are we on?
+						var axis = ( i === 0 ) ? "x" : "y";
 
-					// Is the shape currently flipped on the Y axis?
-					if ( !flipped.y && ( end.y <= init.y ) ) {
-						flipped.y = true;
-					} else if ( end.y > init.y ) {
-						flipped.y = false;
-					}
+						// Is shape flipped on that axis?
+						if ( !flipped[axis] && ( end[axis] <= init[axis] ) ) {
+							flipped[axis] = true;
+						} else if ( end[axis] > init[axis] ) {
+							flipped[axis] = false;
+						}
 
-					// Switch points if flipped
-					if ( flipped.x ) {
-						start.x = end.x;
-						end.x = init.x;
-					} else {
-						start.x = init.x;
-					}
-
-					if ( flipped.y ) {
-						start.y = end.y;
-						end.y = init.y;
-					} else {
-						start.y = init.y;
+						// Switch points if flipped
+						if ( !flipped[axis] ) {
+							start[axis] = init[axis];
+						} else {
+							start[axis] = end[axis];
+							end[axis] = init[axis];
+						}
 					}
 
 					// Return the calculated width and height
@@ -392,8 +393,9 @@
 					// Apply options to circle attributes
 					this.preview_path.attr(
 						$.extend(
-							$this.current_values,
-							this.points.start
+							this.values,
+							this.points.start,
+							{ id: $this.options.path_prefix + this.preview_path.id }
 						)
 					);
 
@@ -401,14 +403,14 @@
 				},
 
 				// Updates circle as it is drawn
-				move: function( e ) {
+				move: function( event ) {
 					// If not drawing, get out of here and do nothing
 					if ( !$this.isDrawing ) {
 						return;
 					}
 
 					// Get current coordinates
-					this.points.end = this.coors( e );
+					this.points.end = $this.methods.coors( event );
 
 					// Apply new dimensions to circle
 					this.preview_path.attr(
@@ -420,20 +422,7 @@
 
 				// Completes the circle
 				stop: function() {
-					if ( this.preview_path !== null ) {
-						$this.layers.push( this.preview_path.attrs );
-					}
-
-					return ( $this.methods.draw.destroy(), this );
-				},
-
-				coors: function( event ) {
-					var coordinates = $this.methods.coors( event );
-
-					coordinates.cx = coordinates.x;
-					coordinates.cy = coordinates.y;
-
-					return coordinates;
+					$this.methods.draw.stop();
 				},
 
 				// Calculates the circle's dimensions, and flips if necessary.
@@ -443,51 +432,30 @@
 						init = this.points.init,
 						end = this.points.end,
 						flipped = this.flipped,
-						r,
-						v;
+						v = [];
 
-					// Is circle currently flipped on the CX axis?
-					if ( !flipped.cx && ( end.cx <= init.cx ) ) {
-						flipped.cx = true;
-					} else if ( end.cx > init.cx ) {
-						flipped.cx = false;
-					}
+					for (var i = 0; i < 2; ++i ) {
+						// What axis are we on
+						var axis = ( i === 0 ) ? "cx" : "cy";
 
-					// Is circle currently flipped on the CY axis?
-					if ( !flipped.cy && ( end.cy <= init.cy ) ) {
-						flipped.cy = true;
-					} else if ( end.cy > init.cy ) {
-						flipped.cy = false;
-					}
+						if ( !flipped[axis] && ( end[axis] <= init[axis] ) ) {
+							flipped[axis] = true;
+						} else if ( end[axis] > init[axis] ) {
+							flipped[axis] = false;
+						}
 
-					// Switch points if flipped
-					if ( flipped.cx ) {
-						start.cx = end.cx;
-						end.cx = init.cx;
-					} else {
-						start.cx = init.cx;
-					}
+						if ( !flipped[axis] ) {
+							start[axis] = init[axis];
+						} else {
+							start[axis] = end[axis];
+							end[axis] = init[axis];
+						}
 
-					if ( flipped.cy ) {
-						start.cy = end.cy;
-						end.cy = init.cy;
-					} else {
-						start.cy = init.cy;
-					}
-
-					v = {
-						x: Math.abs( end.cx - start.cx ),
-						y: Math.abs( end.cy - start.cy )
-					};
-
-					r = Math.sqrt( Math.pow( v.x, 2 ) - Math.pow( v.y, 2 ) );
-
-					if ( r === "NaN" ) {
-						r = 0;
+						v.push( Math.pow( Math.abs( end[axis] - start[axis] ), 2 ) );
 					}
 
 					return {
-						r: r
+						r: isNaN( v = Math.sqrt( v[0] - v[1] ) ) ? 0 : v
 					};
 				}
 			},
@@ -527,27 +495,22 @@
 			start: function( event ) {
 				var coors = $this.methods.coors( event ),
 					paper = $this.paper,
-					handles = $this.paper.set();
+					temp_path = paper.getElementByPoint( coors.x, coors.y );
 
-				this.selection = paper.getElementByPoint( coors.x, coors.y );
+				if ( !$this.isSelected && temp_path !== null ) {
+					this.selection = temp_path;
 
-				if ( this.selection !== null && !$this.isSelected ) {
 					// A path is now selected
 					$this.isSelected = true;
 
 					// Constuct bounding box around path
-					this.bounding_box = this.bbox();
-				} else if ( $this.isSelected && this.selection === null ) {
+					return this.bounding_box = paper.freeTransform(
+							this.selection,
+							$this.options.bounding_box
+					);
+				} else if ( $this.isSelected && temp_path === null ) {
 					// Destroy path if deselected
 					return this.destroy();
-				}
-
-				return this;
-			},
-
-			move: function( event ) {
-				if ( $this.isSelected && event.button !== 0 ) {
-					console.log( event );
 				}
 			},
 
@@ -557,96 +520,15 @@
 				$this.isSelected = false;
 
 				// Remove the bounding box from the canvas
-				this.bounding_box.remove();
+				if ( this.bounding_box ) {
+					this.bounding_box.unplug();
+				}
 
 				// Clean up variables
 				delete this.selection;
 				delete this.bounding_box;
 
 				return this;
-			},
-
-			// Bounding box constructor
-			bbox: function() {
-				var paper = $this.paper,
-					selection = this.selection,
-					padding = selection.attrs["stroke-width"],
-					bbox = $.extend( {}, selection.getBBox( true ) ),
-					box_opts = $this.options.bounding_box,
-					handles,
-					outline;
-
-				bbox.x -= padding / 2;
-				bbox.y -= padding / 2;
-				bbox.x2 += padding / 2;
-				bbox.y2 += padding / 2;
-				bbox.width += padding;
-				bbox.height += padding;
-
-				outline = paper
-					.rect(
-						bbox.x,
-						bbox.y,
-						bbox.width,
-						bbox.height,
-						0
-					)
-					.attr( box_opts.box );
-
-				handles = paper.set().push(
-					// Top left (handles[0])
-					paper.circle( bbox.x, bbox.y, 5 ).attr({ cursor: "nw-resize" }),
-					// Top right (handles[1])
-					paper.circle( bbox.x2, bbox.y, 5 ).attr({ cursor: "ne-resize" }),
-					// Bottom right (handles[2])
-					paper.circle( bbox.x2, bbox.y2, 5 ).attr({ cursor: "se-resize" }),
-					// Bottom left (handles[3])
-					paper.circle( bbox.x, bbox.y2, 5 ).attr({ cursor: "sw-resize" })
-				).attr( box_opts.controls );
-
-				outline.drag(function( dx, dy ) {
-					// Move the box and selection at the same time
-					selection.attr({
-						x: bbox.x + ( dx + padding / 2 ),
-						y: bbox.y + ( dy + padding / 2 ),
-						cx: bbox.x + ( dx + padding / 2 ) + selection.attr( 'r' ),
-						cy: bbox.y + ( dy + padding / 2 ) + selection.attr( 'r' )
-					});
-
-					this.attr({
-						x: bbox.x + dx,
-						y: bbox.y + dy,
-						cursor: "move"
-					});
-
-					// Move the handles along with the box
-					handles[0].attr({
-						cx: bbox.x + dx,
-						cy: bbox.y + dy
-					});
-
-					handles[1].attr({
-						cx: bbox.x2 + dx,
-						cy: bbox.y + dy
-					});
-
-					handles[2].attr({
-						cx: bbox.x2 + dx,
-						cy: bbox.y2 + dy
-					});
-
-					handles[3].attr({
-						cx: bbox.x + dx,
-						cy: bbox.y2 + dy
-					});
-				});
-
-				handles[2].drag(function( dx, dy ) {
-					console.log( dx );
-					console.log( dy );
-				});
-
-				return paper.set().push( outline, handles );
 			}
 		},
 
@@ -677,39 +559,10 @@
 			if ( $this.current_tool === $this.methods.draw.circle ) {
 				coors.cx = coors.x;
 				coors.cy = coors.y;
+				delete coors.x && delete coors.y;
 			}
 
 			return coors;
-		},
-
-		// Detects edges of canvas and scrolls accordingly
-		edge_detect: function( event ) {
-			if ( $this.isDrawing || $this.isSelected ) {
-				var coors = $this.methods.coors( event ),
-					edges = $this.options.edges,
-					element = {
-						h: event.srcElement.clientHeight,
-						w: event.srcElement.clientWidth
-					},
-					view = {
-						h: event.view.innerHeight,
-						w: event.view.innerWidth
-					},
-					jump = {
-						y: 0,
-						x: 0
-					},
-					scroll = {
-						x: view.w - coors.x,
-						y: view.h- coors.y
-					};
-
-				if ( Math.abs( scroll.x ) <= edges.x ) {
-					jump.x = ( scroll.x < 0 ) ? -edges.jump : edges.jump;
-				}
-			}
-
-			event.preventDefault();
 		},
 
 		// Clears the paper
@@ -727,15 +580,13 @@
 
 		// Save current layers
 		save: function() {
-			console.log( $this.layers );
-			console.log( $this.history );
 			return $this;
 		},
 
 		// Undoes the last action
 		undo: function() {
 			if ( $this.layers.length > 0 ) {
-				$this.options.history.push( $this.layers.pop() );
+				$this.history.push( $this.layers.pop() );
 				$this.methods.redraw();
 			}
 
@@ -744,8 +595,8 @@
 
 		// Undos the last undone action
 		redo: function() {
-			if ( $this.options.history.length > 0 ) {
-				$this.layers.push( $this.options.history.pop() );
+			if ( $this.history.length > 0 ) {
+				$this.layers.push( $this.history.pop() );
 				$this.methods.redraw();
 			}
 
@@ -753,8 +604,9 @@
 		},
 
 		tool_selection: function( tool ) {
-			tool = tool.split(".");
 			var result = $this.methods;
+			tool = tool.split(".");
+
 			for ( var i = 0, len = tool.length; i < len; ++i ) {
 				result = result[ tool[i] ];
 			}
@@ -785,8 +637,8 @@
 					break;
 			}
 
-			if ( typeof ct[method] === "function" ) {
-				return ct[method]( event );
+			if ( typeof ct[ method ] === "function" ) {
+				return ct[ method ]( event );
 			}
 		}
 	};
@@ -822,23 +674,17 @@
 			attachment: "scroll"
 		},
 		bounding_box: {
-			box: {
-				fill: "transparent",
-				stroke: "#444",
-				"stroke-dasharray": "--",
-				"stroke-width": 3
-			},
-			controls: {
-				fill: "#444",
-				stroke: "#444",
-				"stroke-width": 5
-			}
+			drag: true,
+			draw: 'bbox',
+			rotate: true,
+			scale: true,
+			size: 5
 		},
 		values: {
 			r: 0,
 			stroke: "#444444",
-			fill: "none",
-			"fill-opacity": 1.0,
+			fill: "rgba(0, 0, 0, 0.0)",
+			"fill-opacity": 0.0,
 			"stroke-linecap": "round",
 			"stroke-linejoin": "round",
 			"stroke-opacity": 1.0,
@@ -849,6 +695,7 @@
 			y: 20,
 			jump: 10
 		},
+		path_prefix: "drawpad-",
 		default_tool: "select",
 		right_click: false,
 		layers: [],
