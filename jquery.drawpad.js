@@ -187,8 +187,9 @@
 					};
 
                     if ( ct === $this.methods.draw.circle ) {
-						ct.cx = ct.x;
-						ct.cy = ct.y;
+						ct.flipped.cx = ct.flipped.x;
+						ct.flipped.cy = ct.flipped.y;
+						delete ct.flipped.cx && delete ct.flipped.cy;
                     }
 
 				} else {
@@ -231,7 +232,7 @@
 				delete ct.points;
 				delete ct.values;
 
-				return this;
+				return ct;
 			},
 
 			// Pen Tool
